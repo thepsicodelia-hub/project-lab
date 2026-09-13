@@ -1745,9 +1745,9 @@ const auth = createAuth({
     repository = next;
     workspaceContext = context;
     state = data;
+    appMode = "online";
     loadProfileAvatar();
     acknowledged = structuredClone(data);
-    appMode = "online";
     failedDraft = null;
     saveConflict = false;
     render();
