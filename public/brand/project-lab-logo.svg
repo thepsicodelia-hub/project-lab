@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 332 72" fill="none">
+  <title>Project Lab</title>
+  <path fill="#d7ee78" d="M10 12h27c10.5 0 19 8.5 19 19v13H43V31a6 6 0 0 0-6-6H23v27H10V12Z"/>
+  <path fill="#d7ee78" d="M29 33h13v14h14v13H29V33Z"/>
+  <text x="78" y="49" fill="#f3f4ed" font-family="Arial,Helvetica,sans-serif" font-size="37" font-weight="600" letter-spacing="-1.3">project<tspan font-weight="400">lab</tspan></text>
+</svg>

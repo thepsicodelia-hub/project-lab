@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Lab · validação responsiva</title>
+<style>body{margin:0;background:#242830;font:14px system-ui;color:#fff}nav{padding:12px;display:flex;gap:12px;align-items:center;position:sticky;top:0;z-index:1;background:#242830}button{padding:8px 16px;border:1px solid #536077;color:#fff;border-radius:8px;background:#343d4d;cursor:pointer}iframe{border:0;display:block;width:390px;height:900px;margin:20px}</style>
+<nav aria-label="Resoluções de teste"><strong>Validação visual</strong><button data-width="390">Celular · 390</button><button data-width="768">Tablet · 768</button><button data-width="1440">Desktop · 1440</button></nav>
+<iframe title="Project Lab em teste" src="/#dashboard"></iframe>
+<script>document.querySelectorAll('button').forEach(button=>button.onclick=()=>document.querySelector('iframe').style.width=button.dataset.width+'px');</script>
+</html>
