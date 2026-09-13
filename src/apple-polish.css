@@ -305,8 +305,8 @@ body {
 }
 
 @keyframes apple-glyph-spin {
-  from { transform: rotateY(0deg) rotateZ(-5deg); }
-  to { transform: rotateY(360deg) rotateZ(-5deg); }
+  from { transform: rotateZ(-5deg); }
+  to { transform: rotateZ(355deg); }
 }
 
 @keyframes apple-glyph-float {
@@ -609,7 +609,7 @@ body.light {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.14;
+  opacity: 0.34;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='.65'/%3E%3C/svg%3E");
   mix-blend-mode: screen;
 }
@@ -635,7 +635,7 @@ body.light {
 .auth-hero-visual {
   z-index: 1;
   right: clamp(28px, 8vw, 132px);
-  top: 28%;
+  top: 24%;
   width: clamp(190px, 25vw, 330px);
   opacity: 0.9;
 }
@@ -647,7 +647,7 @@ body.light {
 }
 
 .auth-hero-glyph {
-  width: 43%;
+  width: 68%;
   color: #ffffff;
   filter: drop-shadow(0 0 26px rgb(255 255 255 / 0.24));
 }
@@ -672,6 +672,13 @@ body.light {
   transform: rotateX(68deg);
   border-color: rgb(255 255 255 / 0.22);
   animation: globe-latitude 8s linear infinite reverse;
+}
+
+/* The mark stands on its own: no orbiting decoration behind the P/L. */
+.auth-hero-glyph::before,
+.auth-hero-glyph::after {
+  display: none;
+  animation: none;
 }
 
 .auth-hero-glyph-mark {
@@ -718,7 +725,7 @@ body.light {
 
   .auth-layout { background: #030403; }
   .auth-story { background: #050605; }
-  .auth-hero-visual { right: -12px; top: 30%; width: 178px; opacity: 0.58; }
+  .auth-hero-visual { right: -12px; top: 26%; width: 178px; opacity: 0.58; }
 }
 
 @media (prefers-reduced-motion: reduce) {
