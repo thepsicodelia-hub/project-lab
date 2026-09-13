@@ -623,6 +623,22 @@ body.light {
   z-index: 1;
 }
 
+.auth-story > .auth-hero-visual {
+  position: absolute;
+  z-index: 1;
+  height: auto;
+  aspect-ratio: 1;
+}
+
+/* The supplied portrait clip is the whole visual layer, not a small floating tile. */
+.auth-story > .auth-hero-visual {
+  inset: 0;
+  width: auto;
+  height: auto;
+  aspect-ratio: auto;
+  transform: none;
+}
+
 .auth-story .brand,
 .auth-story .brand-symbol,
 .auth-story .brand-wordmark small,
@@ -695,6 +711,21 @@ body.light {
   height: 100%;
 }
 
+.auth-hero-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mix-blend-mode: screen;
+  filter: contrast(2.4);
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.auth-hero-fallback {
+  display: none;
+}
+
 .auth-hero-caption {
   display: none;
 }
@@ -723,9 +754,47 @@ body.light {
     grid-column: 1 / -1;
   }
 
-  .auth-layout { background: #030403; }
-  .auth-story { background: #050605; }
-  .auth-hero-visual { right: -12px; top: 26%; width: 178px; opacity: 0.58; }
+  .auth-layout {
+    display: flex;
+    flex-direction: column;
+    min-height: 100svh;
+    gap: 0;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(18px, env(safe-area-inset-bottom));
+    background: #030403;
+  }
+
+  .auth-story {
+    min-height: 210px;
+    padding: 22px;
+    background: #050605;
+  }
+
+  .auth-story > .brand {
+    display: none;
+  }
+
+  .auth-story > .auth-hero-visual {
+    display: block;
+  }
+
+  .auth-hero-video {
+    opacity: 0.88;
+  }
+
+  .auth-story > div:not(.auth-hero-visual),
+  .auth-story > small {
+    display: none;
+  }
+
+  .auth-form-area {
+    padding: 18px 8px 26px;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: none;
+    padding: 24px 20px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
