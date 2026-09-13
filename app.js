@@ -414,10 +414,102 @@ let state = emptyState(),
   repository = null,
   workspaceContext = null,
   appMode = "locked",
+  profileAvatar = "",
   saving = false,
   failedDraft = null,
   saveConflict = false,
   refreshing = false;
+
+const profileAvatarKey = () =>
+  `project-lab-profile-avatar:${appMode === "online" ? workspaceContext?.user?.id || "online" : "demo"}`;
+const profileUserName = () => {
+  const metadata = workspaceContext?.user?.user_metadata || {};
+  return (
+    metadata.display_name ||
+    metadata.full_name ||
+    workspaceContext?.user?.email?.split("@")[0] ||
+    "Project Lab"
+  );
+};
+const profileInitials = () => {
+  const initials = profileUserName()
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+  return initials || "PL";
+};
+const profileAvatarSource = () =>
+  profileAvatar || workspaceContext?.user?.user_metadata?.avatar_url || "";
+const profileAvatarMarkup = (account = false) => {
+  const source = profileAvatarSource();
+  return source
+    ? `<img class="${account ? "account-avatar-image" : "profile-avatar-image"}" src="${esc(source)}" alt="">`
+    : `<span class="${account ? "account-avatar-initials" : "profile-avatar-initials"}">${esc(profileInitials())}</span>`;
+};
+function loadProfileAvatar() {
+  const fallback = workspaceContext?.user?.user_metadata?.avatar_url || "";
+  try {
+    profileAvatar = localStorage.getItem(profileAvatarKey()) || fallback;
+  } catch {
+    profileAvatar = fallback;
+  }
+  syncProfileAvatar();
+}
+function syncProfileAvatar() {
+  const button = document.querySelector(".topbar .profile-avatar");
+  if (!button) return;
+  button.innerHTML = profileAvatarMarkup();
+  button.classList.toggle("has-image", Boolean(profileAvatarSource()));
+}
+function updateAccountAvatarPreview() {
+  const preview = modal?.querySelector("[data-account-avatar]");
+  if (preview) preview.innerHTML = profileAvatarMarkup(true);
+}
+function optimizeAvatar(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      const max = 320;
+      const scale = Math.min(1, max / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Não foi possível ler essa imagem."));
+    };
+    image.src = url;
+  });
+}
+async function saveProfileAvatar(source) {
+  profileAvatar = source || "";
+  try {
+    if (profileAvatar) localStorage.setItem(profileAvatarKey(), profileAvatar);
+    else localStorage.removeItem(profileAvatarKey());
+  } catch {
+    // Private browsing can block local storage; the current session still works.
+  }
+  let remoteSaved = true;
+  if (appMode === "online" && supabase && workspaceContext?.user) {
+    const metadata = { ...(workspaceContext.user.user_metadata || {}) };
+    if (profileAvatar) metadata.avatar_url = profileAvatar;
+    else delete metadata.avatar_url;
+    const { data, error } = await supabase.auth.updateUser({ data: metadata });
+    if (error) remoteSaved = false;
+    if (data?.user) workspaceContext.user = data.user;
+  }
+  syncProfileAvatar();
+  updateAccountAvatarPreview();
+  return remoteSaved;
+}
 const canEdit = () =>
   appMode === "demo" ||
   (appMode === "online" && workspaceContext?.role !== "viewer");
@@ -553,6 +645,7 @@ function renderNav() {
       : workspaceContext?.role === "viewer"
         ? "Acesso de leitura"
         : "Compartilhado com a equipe";
+  syncProfileAvatar();
 }
 function projectTable(items) {
   return `<div class="table-wrap"><table class="data-table project-table"><thead><tr><th>PROJETO</th><th>ETAPA</th><th>ENTREGA</th><th class="team-cell">EQUIPE</th></tr></thead><tbody>${items.map((p) => `<tr><td><div class="project-title"><span class="project-symbol ${p.color}">${icon("film")}</span><div><button class="project-name" data-project="${p.id}">${esc(p.name)}</button><span class="project-client">${esc(p.client)} · ${esc(p.type)}</span></div></div></td><td>${badge(stages[p.stage], colors[p.stage])}</td><td class="muted">${dateLabel(p.date)}</td><td class="team-cell">${avatars(p.team)}</td></tr>`).join("")}</tbody></table>${!items.length ? empty("Nenhum projeto encontrado.") : ""}</div>`;
@@ -1614,6 +1707,7 @@ const auth = createAuth({
     appMode = "locked";
     repository = null;
     workspaceContext = null;
+    profileAvatar = "";
     state = emptyState();
     acknowledged = structuredClone(state);
     failedDraft = null;
@@ -1628,6 +1722,7 @@ const auth = createAuth({
     repository = null;
     workspaceContext = null;
     appMode = "demo";
+    loadProfileAvatar();
     let warning = "";
     try {
       const saved = localStorage.getItem(storageKey);
@@ -1650,6 +1745,7 @@ const auth = createAuth({
     repository = next;
     workspaceContext = context;
     state = data;
+    loadProfileAvatar();
     acknowledged = structuredClone(data);
     appMode = "online";
     failedDraft = null;
@@ -1717,10 +1813,51 @@ window.addEventListener("beforeunload", (event) => {
 
 async function extendedAction(a) {
   if (a === "account") {
+    const source = profileAvatarSource();
+    const email = appMode === "online" ? workspaceContext?.user?.email || "" : "Demonstração local";
+    const role = appMode === "online"
+      ? { owner: "Administrador", editor: "Editor", viewer: "Leitura" }[workspaceContext?.role] || "Membro"
+      : "Dados locais neste navegador";
     openModal(
       "Minha conta",
-      `<p class="account-role">${appMode === "demo" ? "Você está explorando dados fictícios." : `${esc(workspaceContext.user.email)}<br>Perfil: ${esc({ owner: "Administrador", editor: "Editor", viewer: "Leitura" }[workspaceContext.role])}`}</p><div class="form-actions">${appMode === "online" ? btn("Trocar estúdio", "choose-workspace", "users", "") : ""}${btn(appMode === "demo" ? "Entrar na minha conta" : "Sair da conta", "logout", "arrow")}</div>`,
+      `<div class="account-profile"><div class="account-avatar-preview" data-account-avatar>${profileAvatarMarkup(true)}</div><div><strong>${esc(profileUserName())}</strong><p>${esc(email)}<br>${esc(role)}</p></div></div><div class="account-avatar-form"><label class="field">Foto de perfil<input id="account-avatar-file" type="file" accept="image/*"></label><p class="form-hint">Use uma imagem quadrada de até 8 MB. ${appMode === "online" ? "Ela fica vinculada à sua conta." : "Na demonstração, fica salva apenas neste navegador."}</p><div class="form-actions"><button type="button" class="btn ghost" data-action="remove-avatar" ${source ? "" : "disabled"}>Remover foto</button></div></div><p class="account-role">${appMode === "online" ? "Cada pessoa deve entrar com o próprio e-mail. Convide a equipe em Acessos da equipe, sem compartilhar sua senha." : "Ao publicar o estúdio online, cada membro poderá ter seu próprio acesso e foto."}</p><div class="form-actions">${appMode === "online" ? btn("Trocar estúdio", "choose-workspace", "users", "") : ""}${appMode === "online" ? btn("Gerenciar equipe", "access", "users", "") : ""}${btn(appMode === "demo" ? "Entrar na minha conta" : "Sair da conta", "logout", "arrow")}</div>`,
     );
+    const input = modal.querySelector("#account-avatar-file");
+    if (input) {
+      input.onchange = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+          toast("Escolha um arquivo de imagem.");
+          input.value = "";
+          return;
+        }
+        if (file.size > 8 * 1024 * 1024) {
+          toast("A imagem precisa ter até 8 MB.");
+          input.value = "";
+          return;
+        }
+        input.disabled = true;
+        try {
+          const savedOnline = await saveProfileAvatar(await optimizeAvatar(file));
+          toast(savedOnline ? "Foto de perfil atualizada." : "Foto salva neste dispositivo. Não foi possível sincronizar agora.");
+          const remove = modal.querySelector('[data-action="remove-avatar"]');
+          if (remove) remove.disabled = false;
+        } catch (error) {
+          toast(error.message || "Não foi possível atualizar a foto.");
+        } finally {
+          input.disabled = false;
+          input.value = "";
+        }
+      };
+    }
+    return true;
+  }
+  if (a === "remove-avatar") {
+    const savedOnline = await saveProfileAvatar("");
+    toast(savedOnline ? "Foto de perfil removida." : "Foto removida neste dispositivo. Não foi possível sincronizar agora.");
+    const remove = modal.querySelector('[data-action="remove-avatar"]');
+    if (remove) remove.disabled = true;
     return true;
   }
   if (a === "logout") {
