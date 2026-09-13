@@ -633,6 +633,18 @@ function projectResults(items) {
         )
         .join("")}</div>`;
 }
+function clientLogo(name) {
+  const clean = String(name || "").trim();
+  const initials = clean
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase() || "•";
+  const hue = [...clean].reduce((total, char) => (total * 31 + char.charCodeAt(0)) % 360, 0);
+  return `<div class="contact-logo client-logo" style="--logo-hue:${hue}" aria-hidden="true"><span>${esc(initials)}</span><i></i></div>`;
+}
 function clientCards() {
   let list = state.clients.filter((c) =>
     (c.name + " " + c.segment)
@@ -652,7 +664,7 @@ function clientCards() {
   return `<div class="grid-three">${list
     .map((c) => {
       let p = state.projects.filter((p) => p.client === c.name);
-      return `<article class="panel contact-card"><div class="contact-logo">${esc(c.name.slice(0, 1))}</div><h3>${esc(c.name)}</h3><p>${esc(c.segment)}</p><div class="contact-meta"><span>${p.length} projetos</span><strong>${money(p.reduce((a, b) => a + b.value, 0))}</strong></div><div style="margin-top:18px">${btn("Ver cliente", "client:" + c.id, "arrow", "text")}</div></article>`;
+      return `<article class="panel contact-card">${clientLogo(c.name)}<h3>${esc(c.name)}</h3><p>${esc(c.segment)}</p><div class="contact-meta"><span>${p.length} projetos</span><strong>${money(p.reduce((a, b) => a + b.value, 0))}</strong></div><div style="margin-top:18px">${btn("Ver cliente", "client:" + c.id, "arrow", "text")}</div></article>`;
     })
     .join("")}</div>${!list.length ? empty("Nenhum cliente encontrado.") : ""}`;
 }

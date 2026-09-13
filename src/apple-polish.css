@@ -442,3 +442,287 @@ body.light {
   .auth-card { border-radius: 20px; padding: 24px 20px; }
   .polish-motion-ready .polish-reveal { transition-duration: 320ms; }
 }
+
+/* Focused visual pass: quiet controls, expressive client marks, and a monochrome access stage. */
+.topbar .profile-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--apple-panel-raised) 86%, transparent);
+  color: var(--muted);
+}
+
+.topbar .profile-avatar:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  background: color-mix(in srgb, var(--accent) 10%, var(--apple-panel-raised));
+  box-shadow: 0 8px 24px -14px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.topbar .profile-avatar [data-icon] {
+  display: grid;
+  place-items: center;
+}
+
+.topbar .profile-avatar svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.55;
+}
+
+/* A deterministic monogram mark gives every client an identity without external APIs or image storage. */
+.contact-card .contact-logo.client-logo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  color: #f8faf4;
+  background:
+    radial-gradient(circle at 30% 22%, hsl(var(--logo-hue) 74% 72% / 0.34), transparent 42%),
+    linear-gradient(140deg, hsl(var(--logo-hue) 42% 31%), hsl(calc(var(--logo-hue) + 42) 28% 18%));
+  border-color: hsl(var(--logo-hue) 48% 62% / 0.42);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 16px 28px -22px hsl(var(--logo-hue) 70% 62% / 0.9);
+}
+
+.client-logo::before {
+  content: "";
+  position: absolute;
+  inset: -38%;
+  border: 1px solid rgb(255 255 255 / 0.32);
+  border-radius: 50%;
+  transform: rotate(28deg);
+  opacity: 0.72;
+  transition: transform 420ms var(--apple-ease), opacity 220ms ease-out;
+}
+
+.client-logo::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  right: -7px;
+  bottom: -7px;
+  border: 1px solid rgb(255 255 255 / 0.24);
+  border-radius: 50%;
+}
+
+.client-logo > span {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.client-logo > i {
+  position: absolute;
+  left: 9px;
+  bottom: 9px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.7);
+  box-shadow: 0 0 12px rgb(255 255 255 / 0.6);
+}
+
+.contact-card:hover .client-logo::before {
+  transform: rotate(28deg) scale(1.12);
+  opacity: 0.95;
+}
+
+/* Keep the appearance controls on one baseline on wide screens, then collapse cleanly on mobile. */
+#appearance-form > .settings-row {
+  display: grid;
+  grid-template-columns: auto minmax(150px, 1fr) minmax(150px, 0.9fr) auto;
+  align-items: end;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+#appearance-form > .settings-row > .segmented,
+#appearance-form > .settings-row > .field,
+#appearance-form > .settings-row > .btn {
+  align-self: end;
+}
+
+#appearance-form > .settings-row > .segmented {
+  min-height: 42px;
+}
+
+#appearance-form .color-control,
+#appearance-form .field:has(select) {
+  min-width: 0;
+}
+
+#appearance-form .color-control input[type="color"] {
+  width: 100%;
+  min-width: 120px;
+  height: 42px;
+  padding: 5px;
+  border-radius: 11px;
+}
+
+#appearance-form .field select {
+  width: 100%;
+  min-height: 42px;
+}
+
+#appearance-form > .settings-row > .btn {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+#appearance-form .accent-presets {
+  align-items: center;
+  gap: 11px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+}
+
+#appearance-form .accent-presets-label {
+  margin-bottom: 1px;
+}
+
+/* Login is intentionally monochrome: a single white globe mark over a subtle analogue grain. */
+.auth-layout {
+  background: #030403;
+}
+
+.auth-story {
+  isolation: isolate;
+  background: #050605;
+  border-color: #1c211d;
+  box-shadow: 0 30px 100px -54px #000, inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
+.auth-story::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='.65'/%3E%3C/svg%3E");
+  mix-blend-mode: screen;
+}
+
+.auth-story::after {
+  display: none;
+}
+
+.auth-story > * {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-story .brand,
+.auth-story .brand-symbol,
+.auth-story .brand-wordmark small,
+.auth-story p,
+.auth-story .eyebrow,
+.auth-story > small {
+  color: #f4f7f0;
+}
+
+.auth-hero-visual {
+  z-index: 1;
+  right: clamp(28px, 8vw, 132px);
+  top: 28%;
+  width: clamp(190px, 25vw, 330px);
+  opacity: 0.9;
+}
+
+.auth-hero-orbit::before,
+.auth-hero-orbit::after,
+.auth-hero-orbit > i {
+  display: none;
+}
+
+.auth-hero-glyph {
+  width: 43%;
+  color: #ffffff;
+  filter: drop-shadow(0 0 26px rgb(255 255 255 / 0.24));
+}
+
+.auth-hero-glyph::before,
+.auth-hero-glyph::after {
+  content: "";
+  position: absolute;
+  inset: -17%;
+  border: 1px solid rgb(255 255 255 / 0.32);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.auth-hero-glyph::before {
+  transform: rotateY(68deg);
+  animation: globe-meridian 8s linear infinite;
+}
+
+.auth-hero-glyph::after {
+  inset: -7% 8%;
+  transform: rotateX(68deg);
+  border-color: rgb(255 255 255 / 0.22);
+  animation: globe-latitude 8s linear infinite reverse;
+}
+
+.auth-hero-glyph-mark {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.auth-hero-glyph-mark svg {
+  width: 100%;
+  height: 100%;
+}
+
+.auth-hero-caption {
+  display: none;
+}
+
+@keyframes globe-meridian {
+  from { transform: rotateY(68deg) rotateZ(0deg); }
+  to { transform: rotateY(68deg) rotateZ(360deg); }
+}
+
+@keyframes globe-latitude {
+  from { transform: rotateX(68deg) rotateZ(0deg); }
+  to { transform: rotateX(68deg) rotateZ(-360deg); }
+}
+
+@media (max-width: 900px) {
+  .auth-hero-visual { right: 5%; width: 240px; opacity: 0.84; }
+}
+
+@media (max-width: 720px) {
+  #appearance-form > .settings-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #appearance-form > .settings-row > .segmented,
+  #appearance-form > .settings-row > .btn {
+    grid-column: 1 / -1;
+  }
+
+  .auth-layout { background: #030403; }
+  .auth-story { background: #050605; }
+  .auth-hero-visual { right: -12px; top: 30%; width: 178px; opacity: 0.58; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-hero-glyph::before,
+  .auth-hero-glyph::after,
+  .client-logo::before { animation: none; transition: none; }
+}
