@@ -1,0 +1,444 @@
+/* Project Lab · Apple-like material and motion layer.
+   Uses the existing charcoal/citrine identity with restrained depth. */
+:root {
+  --apple-bg: #0b0e0c;
+  --apple-sidebar: #111512;
+  --apple-panel: #151a16;
+  --apple-panel-raised: #1b211c;
+  --apple-line: #2a332b;
+  --apple-text: #f5f7ef;
+  --apple-muted: #aab4a7;
+  --apple-faint: #7f8c80;
+  --apple-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --apple-shadow: 0 24px 70px -42px rgb(0 0 0 / 0.9);
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--apple-bg);
+}
+
+body {
+  background:
+    radial-gradient(900px 520px at 88% -8%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 67%),
+    var(--apple-bg);
+}
+
+#scroll-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 2px;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--accent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent);
+  z-index: 80;
+  pointer-events: none;
+}
+
+.auth-locked #scroll-progress {
+  display: none;
+}
+
+.sidebar,
+.panel,
+.stat,
+.studio-kpi,
+.tool-card,
+.ops-equipment,
+.settings-section,
+.project-card {
+  box-shadow: var(--apple-shadow), inset 0 1px 0 rgb(255 255 255 / 0.025);
+}
+
+.sidebar {
+  background: linear-gradient(165deg, #171d18 0%, var(--apple-sidebar) 46%, #0d110e 100%);
+  border-color: var(--apple-line);
+}
+
+.app-shell {
+  background:
+    radial-gradient(600px 360px at 95% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 73%),
+    transparent;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--apple-bg) 86%, transparent);
+  backdrop-filter: blur(18px) saturate(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.05);
+  border-bottom: 1px solid color-mix(in srgb, var(--apple-line) 72%, transparent);
+}
+
+.btn,
+.icon-button,
+.search-trigger,
+.nav-link,
+.profile-avatar,
+.studio-event,
+.workspace,
+.tool-card,
+.studio-kpi,
+.studio-project-card,
+.studio-stage {
+  transition:
+    transform 220ms var(--apple-ease),
+    background-color 220ms var(--apple-ease),
+    border-color 220ms var(--apple-ease),
+    box-shadow 220ms var(--apple-ease),
+    color 180ms ease-out;
+}
+
+.btn:active,
+.icon-button:active,
+.search-trigger:active,
+.nav-link:active,
+.profile-avatar:active,
+.studio-event:active,
+.tool-card:active,
+.studio-kpi:active,
+.studio-project-card:active,
+.studio-stage:active {
+  transform: scale(0.975);
+}
+
+.btn.primary {
+  box-shadow: 0 10px 24px -15px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+
+.btn.primary:hover {
+  box-shadow: 0 14px 30px -15px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+
+.nav-link.active {
+  background: color-mix(in srgb, var(--accent) 13%, var(--panel));
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+}
+
+.panel,
+.stat,
+.studio-kpi,
+.tool-card,
+.ops-equipment,
+.settings-section {
+  border-color: color-mix(in srgb, var(--apple-line) 84%, var(--line));
+}
+
+.panel:hover,
+.stat:hover,
+.studio-kpi:hover,
+.tool-card:hover,
+.ops-equipment:hover,
+.settings-section:hover {
+  border-color: color-mix(in srgb, var(--accent) 23%, var(--apple-line));
+}
+
+.studio-kpi,
+.studio-project-card,
+.tool-card {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.apple-tilt {
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(var(--tilt-lift, 0px));
+}
+
+.polish-motion-ready .polish-reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 420ms var(--apple-ease),
+    transform 420ms var(--apple-ease);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.polish-motion-ready .polish-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.studio-mission,
+.studio-production {
+  position: relative;
+  overflow: hidden;
+}
+
+.studio-mission::before,
+.studio-production::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(360px 220px at 100% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 72%);
+}
+
+.finance-chart,
+.chart-canvas {
+  position: relative;
+}
+
+.chart-canvas::after {
+  content: "";
+  position: absolute;
+  inset: 10% 0 14%;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 18px;
+  mask-image: linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent);
+}
+
+/* Login: a calm, deep stage with a single animated brand object. */
+.auth-layout {
+  gap: clamp(16px, 2.8vw, 32px);
+  padding: clamp(12px, 2vw, 24px);
+  background: var(--apple-bg);
+}
+
+.auth-story {
+  background:
+    radial-gradient(480px 460px at 70% 30%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 68%),
+    linear-gradient(145deg, #1a211a 0%, #101510 54%, #0b0f0c 100%);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--apple-line));
+  box-shadow: 0 30px 100px -54px #000, inset 0 1px 0 rgb(255 255 255 / 0.05);
+  color: var(--apple-text);
+}
+
+.auth-story .brand,
+.auth-story .brand-symbol,
+.auth-story .brand-wordmark small,
+.auth-story p,
+.auth-story .eyebrow,
+.auth-story > small {
+  color: var(--apple-text);
+}
+
+.auth-hero-visual {
+  position: absolute;
+  right: clamp(30px, 8vw, 130px);
+  top: 50%;
+  width: clamp(170px, 24vw, 310px);
+  aspect-ratio: 1;
+  transform: translateY(-46%);
+  pointer-events: none;
+  opacity: 0.94;
+}
+
+.auth-hero-orbit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  perspective: 900px;
+  transform-style: preserve-3d;
+}
+
+.auth-hero-orbit::before,
+.auth-hero-orbit::after,
+.auth-hero-orbit > i {
+  content: "";
+  position: absolute;
+  width: 72%;
+  height: 72%;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  border-radius: 50%;
+  transform-style: preserve-3d;
+}
+
+.auth-hero-orbit::before {
+  transform: rotateX(68deg) rotateZ(15deg);
+}
+
+.auth-hero-orbit::after {
+  transform: rotateY(68deg) rotateZ(-20deg);
+  border-color: color-mix(in srgb, var(--apple-text) 26%, transparent);
+}
+
+.auth-hero-orbit > i:first-of-type {
+  width: 86%;
+  height: 86%;
+  transform: rotateX(68deg) rotateZ(15deg);
+  border-style: dashed;
+  opacity: 0.45;
+}
+
+.auth-hero-orbit > i:last-of-type {
+  width: 60%;
+  height: 60%;
+  transform: rotateY(68deg) rotateZ(-20deg);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  opacity: 0.45;
+}
+
+.auth-hero-glyph {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 34%;
+  aspect-ratio: 1;
+  color: var(--accent);
+  filter: drop-shadow(0 0 28px color-mix(in srgb, var(--accent) 45%, transparent));
+  transform-style: preserve-3d;
+  animation: apple-glyph-float 6s ease-in-out infinite;
+}
+
+.auth-hero-glyph svg {
+  width: 100%;
+  height: 100%;
+  animation: apple-glyph-spin 14s linear infinite;
+  transform-style: preserve-3d;
+}
+
+.auth-hero-caption {
+  position: absolute;
+  left: 50%;
+  bottom: 4%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--apple-text) 72%, transparent);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+}
+
+@keyframes apple-glyph-spin {
+  from { transform: rotateY(0deg) rotateZ(-5deg); }
+  to { transform: rotateY(360deg) rotateZ(-5deg); }
+}
+
+@keyframes apple-glyph-float {
+  0%, 100% { transform: translateY(0) rotateX(0deg); }
+  50% { transform: translateY(-8px) rotateX(8deg); }
+}
+
+.auth-form-area {
+  position: relative;
+}
+
+.auth-card {
+  position: relative;
+  z-index: 1;
+  padding: clamp(24px, 3vw, 48px);
+  max-width: 440px;
+  border: 1px solid color-mix(in srgb, var(--apple-line) 90%, transparent);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--apple-panel) 78%, transparent);
+  box-shadow: 0 30px 90px -54px #000, inset 0 1px 0 rgb(255 255 255 / 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.auth-card input {
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--apple-panel-raised) 78%, transparent);
+  transition: border-color 180ms ease-out, box-shadow 180ms ease-out, background-color 180ms ease-out;
+}
+
+.auth-card input:focus {
+  background: var(--apple-panel-raised);
+  border-color: color-mix(in srgb, var(--accent) 66%, var(--apple-line));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.accent-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.accent-presets-label {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.accent-preset {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--preset) 44%, var(--line));
+  border-radius: 50%;
+  background: var(--preset);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 5px 14px -9px var(--preset);
+  cursor: pointer;
+  transition: transform 180ms var(--apple-ease), box-shadow 180ms var(--apple-ease), border-color 180ms ease-out;
+}
+
+.accent-preset:hover {
+  transform: scale(1.12);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 8px 18px -8px var(--preset);
+}
+
+.accent-preset[aria-pressed="true"] {
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--preset) 28%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.45);
+}
+
+.accent-preset[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 2px solid var(--preset-ink, #101510);
+  border-top-color: transparent;
+  border-left-color: transparent;
+  transform: rotate(45deg);
+}
+
+.light {
+  --apple-bg: #f3f5f0;
+  --apple-panel: #ffffff;
+  --apple-panel-raised: #f5f7f3;
+  --apple-line: #d6ded2;
+  --apple-text: #20251f;
+  --apple-muted: #526050;
+  --apple-faint: #697767;
+}
+
+.light body,
+body.light {
+  background:
+    radial-gradient(900px 520px at 88% -8%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 67%),
+    var(--apple-bg);
+}
+
+.light .topbar {
+  background: color-mix(in srgb, var(--apple-bg) 86%, transparent);
+}
+
+.light .auth-story {
+  background:
+    radial-gradient(480px 460px at 70% 30%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 68%),
+    linear-gradient(145deg, #ffffff 0%, #edf3e8 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .auth-hero-glyph,
+  .auth-hero-glyph svg { animation: none; }
+  .polish-motion-ready .polish-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .apple-tilt { transform: none; }
+}
+
+@media (max-width: 900px) {
+  .auth-hero-visual { opacity: 0.35; right: 4%; width: 230px; }
+  .auth-card { background: color-mix(in srgb, var(--apple-panel) 90%, transparent); }
+}
+
+@media (max-width: 720px) {
+  .auth-layout { padding: 10px; }
+  .auth-story { min-height: 250px; padding: 24px; }
+  .auth-hero-visual { right: -34px; top: 48%; width: 190px; opacity: 0.28; }
+  .auth-hero-caption { display: none; }
+  .auth-form-area { padding: 24px 12px 34px; }
+  .auth-card { border-radius: 20px; padding: 24px 20px; }
+  .polish-motion-ready .polish-reveal { transition-duration: 320ms; }
+}

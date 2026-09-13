@@ -20,12 +20,16 @@ import { renderFinanceChart, bindFinanceChart } from "./src/finance-chart.js";
 import { animateSurface } from "./src/motion.js";
 import { renderStudioDashboard } from "./src/studio-dashboard.js";
 import "./src/identity.css";
+import "./src/apple-polish.css";
+import { bindPolishMotion, installScrollProgress } from "./src/apple-polish.js";
 document.querySelector(".sidebar .brand").innerHTML = brandLockup();
 document
   .querySelector(".sidebar .brand")
   .setAttribute("aria-label", "Project Lab · Visão geral");
 let disposeChart = () => {},
+  disposePolishMotion = () => {},
   lastMotionView = "";
+installScrollProgress();
 document.addEventListener(
   "pointerdown",
   () => {
@@ -921,6 +925,15 @@ function toolsPage() {
 }
 function settings() {
   const disabled = !canEdit() ? "disabled" : "";
+  const accentPresets = [
+    ["Citrino", "#d7ee78"],
+    ["Coral", "#ffad91"],
+    ["Céu", "#9bc9ff"],
+    ["Lilás", "#cbb8ff"],
+    ["Menta", "#9fe7c2"],
+    ["Pêssego", "#ffd39a"],
+  ];
+  const presetMarkup = `<div class="accent-presets"><span class="accent-presets-label">Escolha uma cor pronta</span>${accentPresets.map(([name, value]) => `<button type="button" class="accent-preset" style="--preset:${value}" data-action="accent-preset:${value}" aria-label="Usar cor ${name}" aria-pressed="${(state.accent || "").toLowerCase() === value.toLowerCase() ? "true" : "false"}" title="${name}" ${disabled}></button>`).join("")}</div>`;
   return (
     header(
       "Configurações",
@@ -928,7 +941,7 @@ function settings() {
     ) +
     `<section class="panel">
     <div class="settings-section"><h2>Seu estúdio</h2><p>Nome compartilhado entre os membros.</p><form id="workspace-form" class="settings-row"><label class="field">Nome do estúdio<input name="workspace" value="${esc(state.workspace)}" maxlength="80" required ${!isOwner() ? "disabled" : ""}></label>${isOwner() ? '<button class="btn primary" type="submit">Salvar nome</button>' : ""}</form></div>
-    <div class="settings-section"><h2>Aparência</h2><p>Sua cor acompanha botões, navegação e indicadores. As preferências são compartilhadas com o estúdio.</p><form id="appearance-form"><div class="settings-row"><div class="segmented"><button type="button" data-action="theme-dark" class="${state.theme === "dark" ? "active" : ""}" ${disabled}>Escuro</button><button type="button" data-action="theme-light" class="${state.theme === "light" ? "active" : ""}" ${disabled}>Claro</button></div><label class="field color-control">Cor do estúdio<input type="color" name="accent" value="${state.accent}" ${disabled}></label>${selectField("Moeda de exibição", "currency", ["BRL", "USD", "EUR"], state.currency)}${canEdit() ? '<button class="btn primary" type="submit">Salvar preferências</button>' : ""}</div><p class="form-hint">A moeda altera a exibição; não converte os valores existentes. Cada proposta pode ter sua própria moeda.</p></form></div>
+    <div class="settings-section"><h2>Aparência</h2><p>Sua cor acompanha botões, navegação e indicadores. As preferências são compartilhadas com o estúdio.</p><form id="appearance-form"><div class="settings-row"><div class="segmented"><button type="button" data-action="theme-dark" class="${state.theme === "dark" ? "active" : ""}" ${disabled}>Escuro</button><button type="button" data-action="theme-light" class="${state.theme === "light" ? "active" : ""}" ${disabled}>Claro</button></div><label class="field color-control">Cor do estúdio<input type="color" name="accent" value="${state.accent}" ${disabled}></label>${selectField("Moeda de exibição", "currency", ["BRL", "USD", "EUR"], state.currency)}${canEdit() ? '<button class="btn primary" type="submit">Salvar preferências</button>' : ""}</div>${presetMarkup}<p class="form-hint">A moeda altera a exibição; não converte os valores existentes. Cada proposta pode ter sua própria moeda.</p></form></div>
     <div class="settings-section"><h2>Seu painel</h2><p>Escolha quais informações aparecem na visão geral.</p>${btn("Personalizar visão geral", "dashboard-customize", "grid", "")}</div>
     <div class="settings-section"><h2>Backup e restauração</h2><p>${appMode === "online" ? "Os registros são salvos no estúdio online. Exporte uma cópia periódica." : "Os dados desta demonstração são salvos neste navegador. Exporte uma cópia antes de limpar os dados do site."}</p><p class="storage-caption">${(new TextEncoder().encode(JSON.stringify(state)).length / 1024).toFixed(0)} KB de 1.024 KB utilizados</p><div class="settings-row">${btn("Exportar backup", "export", "download", "")}${isOwner() ? btn("Importar backup", "import", "file", "") : ""}${appMode === "demo" ? btn("Restaurar demonstração", "reset", "grid", "") : ""}</div></div>
     <div class="settings-section"><h2>Acessos da equipe</h2><p>Administradores gerenciam convites e backups. Editores alteram o trabalho. Leitores apenas consultam.</p><div class="settings-row">${btn("Gerenciar acessos", "access", "users", "")}${btn("Minha conta", "account", "settings", "")}</div></div>
@@ -938,6 +951,7 @@ function settings() {
 function render() {
   if (appMode === "locked") return;
   disposeChart();
+  disposePolishMotion();
   const renderers = {
     dashboard,
     projects,
@@ -968,6 +982,7 @@ function render() {
     document.getElementById("crumb").textContent = "Projetos / Detalhes";
   }
   renderIcons();
+  disposePolishMotion = bindPolishMotion(content, { reduced: matchMedia("(prefers-reduced-motion: reduce)").matches });
   document.title = `${navItems.find((n) => n[0] === route)?.[1] || "Configurações"} — Project Lab`;
   bindForms();
   if (route === "dashboard") applyDashboardPreferences();
@@ -1477,6 +1492,17 @@ async function action(a) {
     state.theme = a.slice(6);
     await save();
     render();
+    return;
+  }
+  if (a.startsWith("accent-preset:")) {
+    if (!canEdit()) return toast("Seu acesso permite apenas consultar este estúdio.");
+    const value = a.slice("accent-preset:".length);
+    if (!/^#[0-9a-f]{6}$/i.test(value)) return;
+    state.accent = value;
+    if (await save()) {
+      render();
+      toast("Cor do estúdio atualizada.");
+    }
     return;
   }
   if (a === "export")
