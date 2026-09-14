@@ -673,6 +673,17 @@ body[data-effects=off] .notification-panel{animation:none}body[data-effects=off]
 #modal .account-avatar-preview {
   border-radius: 50%;
 }
+.topbar .profile-avatar {
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  aspect-ratio: 1;
+  padding: 0;
+}
 .topbar .profile-avatar img,
 #content .person-avatar img,
 #modal .account-avatar-preview img {
@@ -681,4 +692,8 @@ body[data-effects=off] .notification-panel{animation:none}body[data-effects=off]
   display: block;
   object-fit: cover;
   border-radius: inherit;
+}
+.topbar .profile-avatar img {
+  object-position: center;
+  transform: scale(1.1);
 }
