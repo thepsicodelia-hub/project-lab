@@ -11,6 +11,7 @@ export function createAuth({onWorkspace,onDemo,onLock}, dependencies={supabase,c
   recovery=query.get('recovery')==='1';
   const invitation=query.get('invite');
   if(invitation && /^[a-f0-9-]{36}$/.test(invitation)) sessionStorage.setItem('project-lab-invite',invitation);
+  const googleMark='<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.9h5.4a4.6 4.6 0 0 1-2 3v2.5h3.3c1.9-1.8 2.9-4.4 2.9-7.4Z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.7-2.4l-3.3-2.5c-.9.6-2.1 1-3.4 1a5.9 5.9 0 0 1-5.5-4.1H3.1v2.6A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.5 14a6 6 0 0 1 0-3.9V7.4H3.1a10 10 0 0 0 0 9.2L6.5 14Z"/><path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.9 1.5l2.9-2.9A9.7 9.7 0 0 0 3.1 7.4l3.4 2.7A5.9 5.9 0 0 1 12 5.9Z"/></svg>';
   const input=(label,name,type='text',autocomplete='',extra='')=>`<label class="field">${label}<input name="${name}" type="${type}" autocomplete="${autocomplete}" required ${extra}></label>`;
   function feedback(text) {
     message=text;
@@ -32,7 +33,7 @@ export function createAuth({onWorkspace,onDemo,onLock}, dependencies={supabase,c
       const password=mode==='login'||mode==='signup'||mode==='recover';
       const enabled=mode==='recover'||emailEnabled;
       const labels={login:'Entrar',signup:'Criar conta gratuita',forgot:'Enviar link de recuperação',recover:'Salvar nova senha'};
-      form=`${googleEnabled && ['login','signup'].includes(mode)?'<button class="btn auth-google auth-wide" data-auth-action="google"><span aria-hidden="true">G</span> Continuar com Google</button><p class="auth-divider">ou com seu e-mail</p>':''}
+      form=`${googleEnabled && ['login','signup'].includes(mode)?`<button class="btn auth-google auth-wide" data-auth-action="google">${googleMark}<span>Continuar com Google</span></button><p class="auth-divider"><span>ou com seu e-mail</span></p>`:''}
         <p class="form-hint"><a href="/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a> · <a href="/termos.html" target="_blank" rel="noopener">Termos de Uso</a></p>
         <form id="auth-form">
           ${mode==='signup'?input('Seu nome','name','text','name','maxlength="80"'):''}
@@ -46,7 +47,7 @@ export function createAuth({onWorkspace,onDemo,onLock}, dependencies={supabase,c
         ${!configured?'<p class="auth-setup">A conexão online ainda está em preparação. Você já pode explorar a demonstração abaixo.</p>':!emailEnabled?'<p class="auth-setup">Ative o provedor de e-mail no Supabase para liberar o cadastro. O envio gratuito tem limite de mensagens.</p>':''}
         <button class="btn auth-wide" data-auth-action="demo">Explorar demonstração</button>`;
     }
-    root.innerHTML=`<div class="auth-layout"><div class="auth-story"><a class="brand" href="#" aria-label="Project Lab">${brandLockup()}</a><div class="auth-hero-visual" aria-hidden="true"><video class="auth-hero-video" autoplay muted loop playsinline preload="auto"><source src="/brand/project-lab-login-video.mp4" type="video/mp4"></video><span class="auth-hero-glyph auth-hero-fallback">${brandGlyph('auth-hero-glyph-mark')}</span></div><div><span class="eyebrow">DO BRIEFING À ÚLTIMA ENTREGA</span><h1>Mais espaço<br>para criar.</h1><p>Projetos, pessoas e produção.<br>Seu estúdio inteiro, no mesmo lugar.</p><div class="auth-timeline"><span><i></i>Pré-produção</span><span><i></i>Captação</span><span><i></i>Entrega</span></div></div></div><div class="auth-form-area"><div class="auth-card"><span class="eyebrow">BEM-VINDO AO PROJECT LAB</span><h2>${titles[mode]}</h2><p class="auth-description">${mode==='workspaces'?esc(user?.email):'Organize o trabalho. Faça a produção acontecer.'}</p><p class="auth-message" role="alert" data-auth-message ${!message?'hidden':''}>${esc(message)}</p>${form}</div><p class="auth-bottom">Seu trabalho organizado, do primeiro contato ao arquivo final.</p></div></div>`;
+    root.innerHTML=`<div class="auth-login-stage"><div class="auth-grain" aria-hidden="true"></div><div class="auth-halo" aria-hidden="true"></div><div class="auth-card"><a class="auth-lockup" href="#" aria-label="Project Lab">${brandLockup()}</a><span class="eyebrow">BEM-VINDO AO PROJECT LAB</span><h2>${titles[mode]}</h2><p class="auth-description">${mode==='workspaces'?esc(user?.email):'Entre para continuar movendo seu estúdio.'}</p><p class="auth-message" role="alert" data-auth-message ${!message?'hidden':''}>${esc(message)}</p>${form}</div><p class="auth-bottom">Seu estúdio em movimento.</p></div>`;
     root.querySelectorAll('[data-auth-mode]').forEach(el=>el.onclick=()=>show(el.dataset.authMode));
     root.querySelectorAll('[data-workspace]').forEach(el=>el.onclick=()=>run(()=>openWorkspace(el.dataset.workspace)));
     root.querySelectorAll('[data-auth-action]').forEach(el=>el.onclick=()=>run(async()=>{
@@ -111,15 +112,30 @@ export function createAuth({onWorkspace,onDemo,onLock}, dependencies={supabase,c
     }catch(error){if(version===epoch)show('workspaces',friendlyError(error));}finally{if(user?.id===session.user.id)loadingUser=null;}
   }
   async function logout(){epoch++;activeId=null;loadingUser=null;user=null;show('login');if(supabase){const {error}=await supabase.auth.signOut();if(error)feedback(friendlyError(error));}}
+  function playOpening(){
+    if(typeof window==='undefined'||typeof navigator==='undefined')return Promise.resolve();
+    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const test=/jsdom/i.test(navigator.userAgent||'');
+    if(test||reduced||sessionStorage.getItem('project-lab-opening-seen'))return Promise.resolve();
+    lock();
+    root.innerHTML=`<div class="auth-opening" aria-label="Preparando o Project Lab"><video autoplay muted loop playsinline preload="metadata"><source src="/brand/project-lab-login-video.mp4" type="video/mp4"></video><div class="auth-opening-veil"></div><div class="auth-grain"></div><div class="auth-opening-content">${brandGlyph('auth-opening-mark')}<div class="auth-loader"><div><span>Preparando seu estúdio</span><strong data-opening-progress>0%</strong></div><i><b data-opening-bar></b></i></div></div></div>`;
+    const number=root.querySelector('[data-opening-progress]'),bar=root.querySelector('[data-opening-bar]');
+    const started=performance.now(),duration=3600;
+    return new Promise(resolve=>{
+      const frame=now=>{const t=Math.min(1,(now-started)/duration),p=Math.round(100*(1-Math.pow(1-t,2.7)));number.textContent=`${p}%`;bar.style.transform=`scaleX(${p/100})`;if(t<1)requestAnimationFrame(frame);else setTimeout(()=>{sessionStorage.setItem('project-lab-opening-seen','1');resolve();},260)};
+      requestAnimationFrame(frame);
+    });
+  }
   return {
     async start(){
-      if(!configured){show('login');return;}
-      show('loading');let ready=false;
+      const opening=playOpening();
+      if(!configured){await opening;show('login');return;}
+      let ready=false;
       supabase.auth.onAuthStateChange((event,session)=>{
         if(event==='PASSWORD_RECOVERY'){recovery=true;activeId=null;}
         if(ready&&['SIGNED_IN','SIGNED_OUT','PASSWORD_RECOVERY'].includes(event))setTimeout(()=>acceptSession(session),0);
       });
-      const {data,error}=await supabase.auth.getSession();ready=true;
+      const [{data,error}]=await Promise.all([supabase.auth.getSession(),opening]);ready=true;
       if(error)show('login',friendlyError(error));else await acceptSession(data.session);
     },
     showLogin:()=>{activeId=null;show('login');},
