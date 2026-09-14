@@ -8,7 +8,7 @@ test('SQL migration, tenant isolation, permissions, invites and concurrent revis
   const db=new PGlite();
   try {
     await db.exec(`create role anon;create role authenticated;
-      create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
+      create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,raw_user_meta_data jsonb default '{}'::jsonb);
       create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
       grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;
       insert into auth.users values
@@ -18,6 +18,7 @@ test('SQL migration, tenant isolation, permissions, invites and concurrent revis
       ('00000000-0000-0000-0000-000000000004','viewer@example.test',now()),
       ('00000000-0000-0000-0000-000000000005','unverified@example.test',null);`);
     await db.exec(await readFile(new URL('../supabase/migrations/202609130001_workspaces.sql',import.meta.url),'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/202609140002_member_profiles.sql',import.meta.url),'utf8'));
     const asUser=async n=>{await db.exec('reset role;set role authenticated;');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`]);};
     const scalar=async(sql,args=[])=>Object.values((await db.query(sql,args)).rows[0])[0];
     await asUser(1);const a=await scalar("select create_workspace('Studio A')");
@@ -48,8 +49,12 @@ test('SQL migration, tenant isolation, permissions, invites and concurrent revis
     await assert.rejects(db.query('select save_workspace($1,3,$2)',[a,emptyState('Editor rename')]),/owner_required/);
     await assert.rejects(db.query('select create_workspace_invite($1,$2,$3)',[a,'viewer@example.test','editor']),/owner_required/);
     await asUser(4);await db.query('select accept_workspace_invite($1)',[viewInvite]);
-    assert.equal((await db.query('select * from workspace_data')).rows.length,1);
     await assert.rejects(db.query('select save_workspace($1,3,$2)',[a,emptyState('Renamed A')]),/write_forbidden/);
+    await db.exec("reset role;update auth.users set raw_user_meta_data='{\"full_name\":\"Pessoa Viewer\",\"avatar_url\":\"https://lh3.googleusercontent.com/a/test\"}'::jsonb where id='00000000-0000-0000-0000-000000000004'");
+    await asUser(1);const profiles=await db.query('select * from list_workspace_member_profiles($1) where user_id=$2',[a,'00000000-0000-0000-0000-000000000004']);
+    assert.equal(profiles.rows[0].display_name,'Pessoa Viewer');
+    assert.equal(profiles.rows[0].avatar_url,'https://lh3.googleusercontent.com/a/test');
+    assert.equal((await db.query('select * from workspace_data')).rows.length,1);
     await asUser(1);await db.query('select remove_workspace_member($1,$2)',[a,'00000000-0000-0000-0000-000000000003']);
     await asUser(3);assert.equal((await db.query('select * from workspace_data')).rows.length,0);
     await assert.rejects(db.query('select list_workspace_members($1)',[b]),/membership_required/);

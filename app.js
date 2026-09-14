@@ -428,6 +428,47 @@ function syncCurrentUserToTeam() {
   member.accountPhoto = photo;
   return changed;
 }
+async function syncWorkspaceAccountsToTeam(context) {
+  if (!context?.id || !supabase) return false;
+  const { data: accounts, error } = await supabase.rpc("list_workspace_member_profiles", {
+    p_workspace: context.id,
+  });
+  if (error) throw error;
+  let changed = false;
+  for (const account of accounts || []) {
+    const email = String(account.email || "").trim().toLowerCase();
+    let member = state.team.find((item) => item.accountId === account.user_id) || state.team.find((item) => {
+      const details = state.memberDetails.find((entry) => entry.id === item.id);
+      return email && details?.email?.trim().toLowerCase() === email;
+    });
+    if (!member) {
+      const name = String(account.display_name || email.split("@")[0] || "Integrante").trim();
+      member = {
+        id: `account-${account.user_id}`,
+        name,
+        role: "Membro do estúdio",
+        initials: name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "PL",
+        photo: "",
+        accountId: account.user_id,
+        accountPhoto: safeProfileImage(account.avatar_url),
+        color: "#9bc9ff",
+      };
+      state.team.push(member);
+      state.memberDetails.push({ id: member.id, departmentId: "", email, phone: "" });
+      changed = true;
+      continue;
+    }
+    const photo = safeProfileImage(account.avatar_url);
+    if (member.accountId !== account.user_id || member.accountPhoto !== photo) {
+      member.accountId = account.user_id;
+      member.accountPhoto = photo;
+      changed = true;
+    }
+    const details = state.memberDetails.find((entry) => entry.id === member.id);
+    if (details && email && details.email !== email) { details.email = email; changed = true; }
+  }
+  return changed;
+}
 const profileAvatarMarkup = (account = false) => {
   const source = profileAvatarSource();
   return source
@@ -1767,7 +1808,9 @@ const auth = createAuth({
     state = data;
     appMode = "online";
     loadProfileAvatar();
-    if (syncCurrentUserToTeam() && context.role !== "viewer") {
+    const accountsChanged = await syncWorkspaceAccountsToTeam(context);
+    const currentChanged = syncCurrentUserToTeam();
+    if ((accountsChanged || currentChanged) && context.role !== "viewer") {
       try { state = await next.save(state); } catch { state = data; syncCurrentUserToTeam(); }
     }
     acknowledged = structuredClone(state);
