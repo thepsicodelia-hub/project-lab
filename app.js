@@ -85,7 +85,7 @@ const initial = {
   version: 1,
   workspace: "Meu estúdio",
   theme: "light",
-  accent: "#6d6e73",
+  accent: "#f5f5f7",
   goal: 40000,
   script:
     "CENA 01 — ABERTURA\n\nPlano geral do estúdio. Luz natural atravessa a janela.\n\nNARRAÇÃO\nToda grande ideia começa com um novo olhar.\n\nCENA 02 — PROCESSO\n\nDetalhes das mãos preparando a câmera. Corte para a equipe no set.",
@@ -1747,7 +1747,7 @@ const auth = createAuth({
     // Update appearance once without removing the user's existing demo records.
     try {
       if (!localStorage.getItem('project-lab-pulse-clean-appearance')) {
-        state.theme = 'light'; state.accent = '#6d6e73';
+        state.theme = 'light'; state.accent = '#f5f5f7';
         localStorage.setItem(storageKey, JSON.stringify(state));
         localStorage.setItem('project-lab-pulse-clean-appearance', '1');
       }

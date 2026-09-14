@@ -638,6 +638,14 @@ body[data-effects=off] #content :is(.pulse-event,.calendar-event){transition:non
   #content .inventory-section .clean-equipment-heading h3{font-size:19px}
   #content .inventory-filter-count{right:-10px}
 }
+
+/* Neutral identity: white leads; semantic colors stay reserved for data. */
+body:not(.light) .brand-symbol,
+.auth-story .brand-symbol{color:#f7f7f8;filter:drop-shadow(0 0 12px #ffffff38)}
+body:not(.light) .btn.primary,
+body:not(.light) .clean-home-actions .btn.primary{box-shadow:0 0 20px #ffffff1f,inset 0 1px 0 #ffffffb8}
+body:not(.light) .btn.primary:hover,
+body:not(.light) .clean-home-actions .btn.primary:hover{box-shadow:0 0 28px #ffffff32,inset 0 1px 0 #fff}
 @media(hover:hover) and (pointer:fine){
   #content .inventory-filter:hover{border-color:var(--category-color);background:color-mix(in srgb,var(--category-color) 6%,var(--panel))}
   #content .inventory-filter:hover .inventory-filter-art{transform:translateY(-2px)}

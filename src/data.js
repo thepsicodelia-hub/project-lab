@@ -40,7 +40,7 @@ export const stateSchema = z
     accent: z
       .string()
       .regex(/^#[0-9a-fA-F]{6}$/)
-      .default("#d7ee78"),
+      .default("#f5f5f7"),
     currency: z.enum(["BRL", "USD", "EUR"]).default("BRL"),
     annualGoal: z.number().finite().min(1).max(1e11).default(480000),
     dashboardHidden: z
