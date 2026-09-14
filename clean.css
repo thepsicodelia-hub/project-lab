@@ -652,3 +652,19 @@ body:not(.light) .clean-home-actions .btn.primary:hover{box-shadow:0 0 28px #fff
 }
 @media(prefers-reduced-motion:reduce){#content .inventory-filter,#content .inventory-filter-art{transition:none;transform:none!important}}
 body[data-effects=off] #content :is(.inventory-filter,.inventory-filter-art){transition:none;transform:none!important}
+
+/* People are always represented by circular portraits across every viewport. */
+.topbar .profile-avatar,
+#content .person-avatar,
+#modal .account-avatar-preview {
+  border-radius: 50%;
+}
+.topbar .profile-avatar img,
+#content .person-avatar img,
+#modal .account-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
+}
