@@ -703,6 +703,35 @@ function agendaList() {
     )
     .join("")}</div>`;
 }
+const notificationPanel = document.getElementById("notification-panel");
+function closeNotifications({ focus = true } = {}) {
+  if (notificationPanel.hidden) return;
+  notificationPanel.hidden = true;
+  document.querySelector('[data-action="notifications"]')?.setAttribute("aria-expanded", "false");
+  if (focus) lastTrigger?.focus?.();
+}
+function notificationPanelMarkup() {
+  const start = isoDate(today), limit = new Date(today);
+  limit.setDate(limit.getDate() + 7);
+  const events = state.events.filter((event) => event.date >= start && event.date <= isoDate(limit)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 6);
+  const captureCount = events.filter((event) => event.type === "Captação").length;
+  const deliveryCount = events.filter((event) => event.type === "Entrega").length;
+  let currentDate = "";
+  const rows = events.map((event) => {
+    const heading = event.date !== currentDate ? `<div class="notification-date"><span>${event.date === start ? "HOJE" : dateLabel(event.date).toUpperCase()}</span></div>` : "";
+    currentDate = event.date;
+    return `${heading}<button class="notification-event event-tone-${eventTone(event)}" data-action="notification-event:${esc(event.id)}"><time>${esc(event.time)}</time><span><strong>${esc(event.name)}</strong><small>${esc([event.client, event.type].filter(Boolean).join(" · ") || "Compromisso do estúdio")}</small></span><i aria-hidden="true"></i></button>`;
+  }).join("");
+  return `<div class="notification-head"><div><h2>Próximos compromissos</h2><p>Sua produção nos próximos 7 dias.</p></div><button class="icon-button" data-action="close-notifications" aria-label="Fechar compromissos">${icon("x")}</button></div>${events.length ? `<div class="notification-summary"><strong>${events.length}</strong><span><b>Uma semana em movimento</b><small>${captureCount} ${captureCount === 1 ? "captação" : "captações"} e ${deliveryCount} ${deliveryCount === 1 ? "entrega programada" : "entregas programadas"}</small></span></div><div class="notification-list">${rows}</div>` : `<div class="notification-empty">${icon("calendar")}<strong>Agenda livre por enquanto</strong><p>Nenhum compromisso marcado para os próximos 7 dias.</p></div>`}<div class="notification-footer"><button class="btn primary" data-route="calendar">Abrir agenda ${icon("arrow")}</button></div>`;
+}
+function showNotifications() {
+  lastTrigger = document.activeElement;
+  notificationPanel.innerHTML = notificationPanelMarkup();
+  notificationPanel.hidden = false;
+  document.querySelector('[data-action="notifications"]')?.setAttribute("aria-expanded", "true");
+  renderIcons(notificationPanel);
+  notificationPanel.querySelector("button")?.focus();
+}
 function dashboard() {
   return renderStudioDashboard({
     state,
@@ -1587,8 +1616,13 @@ async function action(a) {
   if (a === "new-project") return newProject();
   if (a === "close") return closeModal();
   if (a === "search") return showSearch();
-  if (a === "notifications")
-    return openModal("Próximos compromissos", agendaList());
+  if (a === "notifications") return notificationPanel.hidden ? showNotifications() : closeNotifications();
+  if (a === "close-notifications") return closeNotifications();
+  if (a.startsWith("notification-event:")) {
+    closeNotifications({ focus: false });
+    location.hash = "calendar";
+    return;
+  }
   if (a === "new-equipment")
     return operationsModule.handle("ops:new:equipment");
   if (a === "new-member") return operationsModule.handle("ops:new:member");
@@ -1682,6 +1716,7 @@ async function action(a) {
 }
 document.addEventListener("click", (e) => {
   if (appMode === "locked" || saving) return;
+  if (!notificationPanel.hidden && !e.target.closest("#notification-panel,[data-action=notifications]")) closeNotifications({ focus: false });
   const target = e.target.closest(
     "[data-action],[data-project],[data-tool],[data-route],[data-view],[data-task-view],[data-finance-view],[data-team-view],[data-commercial-view]",
   );
@@ -1692,6 +1727,7 @@ document.addEventListener("click", (e) => {
   if (d.project) return projectDetail(d.project);
   if (d.tool) return openTool(d.tool);
   if (d.route) {
+    closeNotifications({ focus: false });
     closeModal();
     location.hash = d.route;
     return;
@@ -1745,8 +1781,10 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     showSearch();
   }
-  if (e.key === "Escape")
+  if (e.key === "Escape") {
+    closeNotifications();
     setMenuOpen(false);
+  }
 });
 window.addEventListener("hashchange", () => {
   setMenuOpen(false);

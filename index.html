@@ -42,11 +42,12 @@
       <div class="top-actions">
         <button id="pulse-effects" class="effects-toggle" aria-pressed="true" title="Pausar os efeitos de movimento"><span class="effects-dot"></span><span>Efeitos ligados</span></button>
         <button class="search-trigger" data-action="search" aria-label="Buscar no estúdio"><span data-icon="search"></span><span>Buscar</span><kbd>⌘ K</kbd></button>
-        <button class="icon-button" data-action="notifications" aria-label="Ver próximos compromissos"><span data-icon="bell"></span><i class="notification-dot"></i></button>
+        <button class="icon-button" data-action="notifications" aria-label="Ver próximos compromissos" aria-controls="notification-panel" aria-expanded="false"><span data-icon="bell"></span><i class="notification-dot"></i></button>
         <button class="profile-avatar" data-action="account" aria-label="Conta, trocar estúdio ou sair"><span data-icon="settings"></span></button>
         <button class="icon-button mobile-menu" id="menu-toggle" aria-label="Abrir navegação" aria-controls="sidebar" aria-expanded="false"><span data-icon="menu"></span></button>
       </div>
     </header>
+    <aside id="notification-panel" class="notification-panel" aria-label="Próximos compromissos" hidden></aside>
     <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
       <nav id="navigation" aria-label="Áreas do estúdio"></nav>
       <div class="sidebar-bottom"><a href="#settings" class="nav-link" id="settings-link"><span data-icon="settings"></span><span class="nav-text">Configurações</span></a><div class="demo-note" hidden><strong>Prévia interativa</strong><small>Dados de demonstração</small></div></div>
