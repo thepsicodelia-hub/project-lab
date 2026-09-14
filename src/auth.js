@@ -33,6 +33,7 @@ export function createAuth({onWorkspace,onDemo,onLock}, dependencies={supabase,c
       const enabled=mode==='recover'||emailEnabled;
       const labels={login:'Entrar',signup:'Criar conta gratuita',forgot:'Enviar link de recuperação',recover:'Salvar nova senha'};
       form=`${googleEnabled && ['login','signup'].includes(mode)?'<button class="btn auth-google auth-wide" data-auth-action="google"><span aria-hidden="true">G</span> Continuar com Google</button><p class="auth-divider">ou com seu e-mail</p>':''}
+        <p class="form-hint"><a href="/privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a> · <a href="/termos.html" target="_blank" rel="noopener">Termos de Uso</a></p>
         <form id="auth-form">
           ${mode==='signup'?input('Seu nome','name','text','name','maxlength="80"'):''}
           ${mode!=='recover'?input('E-mail','email','email','email','maxlength="254"'):''}
