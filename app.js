@@ -12,24 +12,31 @@ import { supabase, friendlyError } from "./src/supabase.js";
 import { createProposals } from "./src/proposals.js";
 import { createOperations } from "./src/operations.js";
 import { createCreativeTools } from "./src/creative-tools.js";
-import "./src/refinement.css";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 import { BRAND_ACCENT, brandLockup } from "./src/brand.js";
 import { renderFinanceChart, bindFinanceChart } from "./src/finance-chart.js";
 import { animateSurface } from "./src/motion.js";
-import { renderStudioDashboard } from "./src/studio-dashboard.js";
-import "./src/identity.css";
-import "./src/apple-polish.css";
-import { bindPolishMotion, installScrollProgress } from "./src/apple-polish.js";
-document.querySelector(".sidebar .brand").innerHTML = brandLockup();
+import { renderStudioDashboard } from "./src/pulse-dashboard.js";
+import { bindPulseMotion, installPulseEffects } from "./src/pulse-motion.js";
+import { cleanIcon } from "./src/clean-icons.js";
+import { appearanceTokens } from "./src/appearance.js";
+import { bindMediaFields,mediaField,safeLocalImage,safeProfileImage,personAvatar,clientForProject } from './src/profile-media.js';
+import { progressRing } from './src/progress-ring.js';
+import { taskDateBadge,renderWeeklyPlanner } from './src/weekly-planner.js';
+import { renderDistribution,bindDistribution } from './src/finance-distribution.js';
+import { eventTone,eventColorField,bindEventColors } from './src/event-colors.js';
+document.querySelector("#home-brand").innerHTML = brandLockup();
 document
-  .querySelector(".sidebar .brand")
-  .setAttribute("aria-label", "Project Lab · Visão geral");
+  .querySelector("#home-brand")
+  .setAttribute("aria-label", "Project Lab · Painel");
 let disposeChart = () => {},
   disposePolishMotion = () => {},
-  lastMotionView = "";
-installScrollProgress();
+  disposeSurface = () => {},
+  disposeDistribution = () => {},
+  lastMotionView = "",
+  dashboardVisited = false;
+installPulseEffects();
 document.addEventListener(
   "pointerdown",
   () => {
@@ -44,53 +51,7 @@ document.addEventListener(
   },
   { capture: true },
 );
-const icons = {
-  grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
-  film: '<rect x="3" y="6" width="18" height="15" rx="2"/><path d="m3 6 17-4 1 4M7 5l2 3m4-5 2 3M3 11h18"/>',
-  users:
-    '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M15 3a4 4 0 0 1 0 8"/><circle cx="9" cy="7" r="4"/>',
-  wallet:
-    '<path d="M20 7V5a2 2 0 0 0-2-2H5a3 3 0 0 0 0 6h15v12H5a3 3 0 0 1-3-3V6m18 7h-6v4h6"/>',
-  target:
-    '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
-  check: '<path d="m5 12 4 4L19 6"/>',
-  tasks:
-    '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="m7 8 1 1 2-2m3 1h4M7 14l1 1 2-2m3 1h4"/>',
-  camera:
-    '<path d="M14 4h-4L8 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-4Z"/><circle cx="12" cy="14" r="4"/>',
-  tools:
-    '<path d="m14 6 4-4a6 6 0 0 1-7 8L4 20a2 2 0 0 1-3-3l10-7a6 6 0 0 1 8-7l-4 4Z"/>',
-  calendar:
-    '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18m-13 4h2m4 0h2"/>',
-  settings:
-    '<path d="m9 3-1 3-3 1v4l-2 1 2 2v3l3 1 1 3h5l1-3 3-1v-3l3-2-2-2V7l-3-1-1-3Z"/><circle cx="12" cy="12" r="3"/>',
-  search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>',
-  arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
-  chevron: '<path d="m9 5 7 7-7 7"/>',
-  down: '<path d="m6 9 6 6 6-6"/>',
-  up: '<path d="m7 14 5-5 5 5"/>',
-  x: '<path d="m6 6 12 12M6 18 18 6"/>',
-  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
-  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
-  aperture:
-    '<circle cx="12" cy="12" r="9"/><path d="m14 3 6 10m1 0H10m5 8-6-10M3 11h11M8 4l-5 9m9 8 5-9"/>',
-  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/>',
-  chart: '<path d="M4 3v18h17M8 16v-4m5 4V8m5 8V5"/>',
-  trend: '<path d="m3 17 6-6 4 4 8-10m-6 0h6v6"/>',
-  file: '<path d="M14 2H5v20h14V7Zm0 0v6h5M8 12h8m-8 4h6"/>',
-  image:
-    '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1"/><path d="m21 15-6-6-12 12"/>',
-  spark:
-    '<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4m-2-2h4"/>',
-  download: '<path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/>',
-  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/>',
-  briefcase:
-    '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V3h8v4M3 12h18m-11 0v3h4v-3"/>',
-  more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
-};
-const icon = (n) =>
-  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[n] || icons.grid}</svg>`;
+const icon = cleanIcon;
 const esc = (s) =>
   String(s ?? "").replace(
     /[&<>"']/g,
@@ -123,7 +84,8 @@ const dateLabel = (s) =>
 const initial = {
   version: 1,
   workspace: "Meu estúdio",
-  theme: "dark",
+  theme: "light",
+  accent: "#6d6e73",
   goal: 40000,
   script:
     "CENA 01 — ABERTURA\n\nPlano geral do estúdio. Luz natural atravessa a janela.\n\nNARRAÇÃO\nToda grande ideia começa com um novo olhar.\n\nCENA 02 — PROCESSO\n\nDetalhes das mãos preparando a câmera. Corte para a equipe no set.",
@@ -336,6 +298,14 @@ const initial = {
       uses: 28,
       life: 120,
     },
+    {
+      id: "q5",
+      name: "Ilha de edição Studio",
+      category: "Ilha de edição",
+      value: 12500,
+      uses: 54,
+      life: 180,
+    },
   ],
   leads: [
     {
@@ -421,7 +391,7 @@ let state = emptyState(),
   refreshing = false;
 
 const profileAvatarKey = () =>
-  `project-lab-profile-avatar:${appMode === "online" ? workspaceContext?.user?.id || "online" : "demo"}`;
+  `project-lab-avatar:${appMode === "online" ? workspaceContext?.user?.id || "online" : "demo"}`;
 const profileUserName = () => {
   const metadata = workspaceContext?.user?.user_metadata || {};
   return (
@@ -443,6 +413,21 @@ const profileInitials = () => {
 };
 const profileAvatarSource = () =>
   profileAvatar || workspaceContext?.user?.user_metadata?.avatar_url || "";
+function syncCurrentUserToTeam() {
+  const user = workspaceContext?.user;
+  if (!user?.id || !user?.email) return false;
+  const email = user.email.trim().toLowerCase();
+  const member = state.team.find((item) => item.accountId === user.id) || state.team.find((item) => {
+    const details = state.memberDetails.find((entry) => entry.id === item.id);
+    return details?.email?.trim().toLowerCase() === email;
+  });
+  if (!member) return false;
+  const photo = safeProfileImage(profileAvatarSource());
+  const changed = member.accountId !== user.id || member.accountPhoto !== photo;
+  member.accountId = user.id;
+  member.accountPhoto = photo;
+  return changed;
+}
 const profileAvatarMarkup = (account = false) => {
   const source = profileAvatarSource();
   return source
@@ -506,6 +491,7 @@ async function saveProfileAvatar(source) {
     if (error) remoteSaved = false;
     if (data?.user) workspaceContext.user = data.user;
   }
+  if (syncCurrentUserToTeam() && canEdit()) await save();
   syncProfileAvatar();
   updateAccountAvatarPreview();
   return remoteSaved;
@@ -516,10 +502,13 @@ const canEdit = () =>
 const isOwner = () => appMode === "demo" || workspaceContext?.role === "owner";
 const currentMonth = () => isoDate(new Date()).slice(0, 7);
 let route = "dashboard",
-  view = "board",
+  view = "gallery",
   taskView = "list",
+  plannerWeekOffset = 0,
   financeView = "overview",
   financePeriod = currentMonth(),
+  distributionMetric = 'received',
+  distributionGroup = 'client',
   teamView = "members",
   commercialView = "pipeline",
   calendarDate = new Date(today.getFullYear(), today.getMonth(), 1),
@@ -529,19 +518,19 @@ let route = "dashboard",
   lastTrigger = null;
 const stages = ["Pré-produção", "Captação", "Em edição", "Finalizado"],
   colors = ["purple", "amber", "blue", "green"],
-  stageColors = ["#b5a1e5", "#e4b781", "#d7ee78", "#8dd0b1"];
+  stageColors = ["var(--status-violet)", "var(--status-amber)", "var(--status-cyan)", "var(--positive)"];
 const navItems = [
-  ["dashboard", "Visão geral", "grid"],
-  ["projects", "Projetos", "film"],
-  ["clients", "Clientes", "users"],
-  ["calendar", "Agenda", "calendar"],
+  ["dashboard", "Painel", "grid"],
+  ["projects", "Produções", "film"],
   ["tasks", "Tarefas", "tasks"],
-  ["finance", "Financeiro", "wallet"],
-  ["commercial", "Comercial", "trend"],
-  ["goals", "Objetivos", "target"],
+  ["calendar", "Agenda", "calendar"],
+  ["clients", "Conexões", "users"],
+  ["commercial", "Negócios", "trend"],
+  ["finance", "Caixa", "wallet"],
+  ["goals", "Metas", "target"],
   ["team", "Equipe", "users"],
-  ["equipment", "Equipamentos", "camera"],
-  ["tools", "Ferramentas", "tools"],
+  ["equipment", "Inventário", "camera"],
+  ["tools", "Bancada", "tools"],
 ];
 function renderIcons(root = document) {
   root
@@ -607,7 +596,7 @@ const link = (text, to) =>
 const badge = (text, color = "blue") =>
   `<span class="badge ${color}">${esc(text)}</span>`;
 const avatars = (members = ["LM", "AC"]) =>
-  `<div class="avatars" aria-label="Responsáveis: ${esc(members.join(", "))}">${members.map((n) => `<span class="avatar">${esc(n)}</span>`).join("")}</div>`;
+  `<div class="avatars" aria-label="Responsáveis">${members.map(n=>personAvatar(state.team.find(m=>m.initials===n)||{initials:n,name:n},esc)).join('')}</div>`;
 const empty = (text) =>
   `<div class="empty-state">${icon("search")}<p>${text}</p></div>`;
 const header = (
@@ -619,47 +608,48 @@ const header = (
   `<div class="page-heading"><div><span class="eyebrow">${eyebrow}</span><h1>${title}</h1><p>${sub}</p></div><div class="heading-actions">${actions}</div></div>`;
 const panel = (title, sub, body, action = "", cls = "") =>
   `<section class="panel ${cls}"><div class="panel-head"><div><h2>${title}</h2>${sub ? `<p class="panel-sub">${sub}</p>` : ""}</div>${action}</div>${body}</section>`;
-const stat = (label, value, note, ic = "chart") =>
-  `<article class="stat"><div class="stat-top"><span>${label}</span><span>${icon(ic)}</span></div><p class="stat-number">${value}</p><div class="stat-note">${note}</div></article>`;
+const stat = (label, value, note, ic = "chart", tone = "") =>
+  `<article class="stat"><div class="stat-top"><span>${label}</span><span>${icon(ic)}</span></div><p class="stat-number ${tone}">${value}</p><div class="stat-note">${note}</div></article>`;
 const revenue = () => financialSummary(state, currentMonth()).revenue;
 const costs = () => financialSummary(state, currentMonth()).costs;
 function renderNav() {
+  if (!document.getElementById('sidebar-toggle')) {
+    const toggle = document.createElement('button');
+    toggle.id = 'sidebar-toggle'; toggle.className = 'sidebar-toggle';
+    toggle.setAttribute('aria-controls', 'navigation');
+    toggle.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16m7-12-4 4 4 4"/></svg>';
+    const update = () => {const compact = document.body.classList.contains('sidebar-compact');toggle.setAttribute('aria-expanded',String(!compact));toggle.setAttribute('aria-label',compact?'Mostrar nomes das áreas':'Compactar navegação em ícones');toggle.title=toggle.getAttribute('aria-label');};
+    toggle.onclick = () => {document.body.classList.toggle('sidebar-compact');update();};
+    update();document.getElementById('sidebar').prepend(toggle);
+  }
   document.getElementById("navigation").innerHTML = navItems
     .map(
       ([id, name, ic], i) =>
-        `${i === 0 ? '<p class="nav-label">ESTÚDIO</p>' : i === 5 ? '<p class="nav-label">GESTÃO</p>' : i === 8 ? '<p class="nav-label">RECURSOS</p>' : ""}<a class="nav-link ${route === id ? "active" : ""}" href="#${id}" ${route === id ? 'aria-current="page"' : ""}>${icon(ic)}${name}${id === "projects" ? `<span class="nav-count">${state.projects.filter((p) => p.stage !== 3).length}</span>` : ""}</a>`,
+        `<a class="nav-link ${route === id ? "active" : ""}" href="#${id}" ${route === id ? 'aria-current="page"' : ""}>${icon(ic)}<span class="nav-text">${name}</span></a>`,
     )
     .join("");
   document
     .getElementById("settings-link")
     .classList.toggle("active", route === "settings");
+  document.getElementById('settings-link').setAttribute('aria-current', route === 'settings' ? 'page' : 'false');
   document.querySelector(".workspace strong").textContent = state.workspace;
   document.body.classList.toggle("light", state.theme === "light");
   document.body.dataset.page = route;
   applyAppearance();
-  document.querySelector(".demo-note strong").textContent =
-    appMode === "demo" ? "Demonstração local" : "Estúdio online";
-  document.querySelector(".demo-note small").textContent =
-    appMode === "demo"
-      ? "Dados de exemplo"
-      : workspaceContext?.role === "viewer"
-        ? "Acesso de leitura"
-        : "Compartilhado com a equipe";
+  const demoNote = document.querySelector(".demo-note");
+  if (demoNote) {
+    demoNote.querySelector("strong").textContent = appMode === "demo" ? "Demonstração local" : "Estúdio online";
+    demoNote.querySelector("small").textContent = appMode === "demo" ? "Dados de exemplo" : workspaceContext?.role === "viewer" ? "Acesso de leitura" : "Compartilhado com a equipe";
+  }
   syncProfileAvatar();
+  document.querySelectorAll('.sidebar .nav-link').forEach(link => {const name=navItems.find(item=>link.getAttribute('href')==='#'+item[0])?.[1] || 'Configurações';link.setAttribute('aria-label',name);link.title=name;});
 }
 function projectTable(items) {
   return `<div class="table-wrap"><table class="data-table project-table"><thead><tr><th>PROJETO</th><th>ETAPA</th><th>ENTREGA</th><th class="team-cell">EQUIPE</th></tr></thead><tbody>${items.map((p) => `<tr><td><div class="project-title"><span class="project-symbol ${p.color}">${icon("film")}</span><div><button class="project-name" data-project="${p.id}">${esc(p.name)}</button><span class="project-client">${esc(p.client)} · ${esc(p.type)}</span></div></div></td><td>${badge(stages[p.stage], colors[p.stage])}</td><td class="muted">${dateLabel(p.date)}</td><td class="team-cell">${avatars(p.team)}</td></tr>`).join("")}</tbody></table>${!items.length ? empty("Nenhum projeto encontrado.") : ""}</div>`;
 }
 function goalCard() {
-  const percent = Math.round((revenue() / state.goal) * 100);
-  return panel(
-    '<span class="goal-head"><span>' +
-      icon("target") +
-      "</span>Meta do mês</span>",
-    "",
-    `<div class="panel-body"><div class="ring-wrap"><svg viewBox="0 0 140 140" aria-label="${percent}% da meta"><circle class="ring-bg" cx="70" cy="70" r="57" fill="none" stroke-width="8"/><circle class="ring-fill" style="stroke-dashoffset:${358 * (1 - Math.min(percent, 100) / 100)}" cx="70" cy="70" r="57" fill="none" stroke-width="8"/></svg><div class="ring-text"><strong>${percent}<span style="font-size:18px;color:var(--muted)">%</span></strong><small>da meta atingida</small></div></div><div class="goal-details"><div><small>Realizado</small><strong>${money(revenue())}</strong></div><div><small>Meta mensal</small><strong>${money(state.goal)}</strong></div></div><div class="goal-note">${percent >= 100 ? "Meta alcançada. Próximo objetivo?" : `Faltam <strong>${money(state.goal - revenue())}</strong> para chegar lá.`}</div></div>`,
-    btn("", "goal", "more", "text"),
-  );
+  const value=revenue();
+  return `<section class="panel goal-summary-panel"><header><div><span class="goal-period">${new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(today)}</span><h2>Meta do mês</h2></div>${btn('Editar','goal','target','small')}</header><div class="monthly-goal-body">${progressRing(value,state.goal,'Meta do mês')}<div class="goal-details"><div><small>Recebido no mês</small><strong class="value-positive">${money(value)}</strong></div><div><small>Objetivo mensal</small><strong>${money(state.goal)}</strong></div></div></div><footer>${value>=state.goal?'Meta alcançada. Hora de celebrar.':`Faltam <strong>${money(Math.max(0,state.goal-value))}</strong> para sua próxima marca.`}</footer></section>`;
 }
 function agendaList() {
   return `<p class="day-label">${new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" }).format(today).toUpperCase()}</p><div class="agenda-list">${state.events
@@ -686,15 +676,18 @@ function dashboard() {
     received,
     outstanding,
     financialSummary,
+    monthlySeries,
+    renderFinanceChart,
     projectCard,
     taskRows,
   });
 }
 function projectCard(p) {
   const style = ["purple", "amber", "blue", "green"][p.stage];
+  const client=clientForProject(state,p),logo=safeLocalImage(client?.logo),cover=safeLocalImage(client?.cover);
   return `<button class="project-card studio-project-card" draggable="${canEdit()}" data-project="${p.id}">
- <span class="project-cover ${style}"><span class="project-cover-type">${esc(p.type || "Produção")}</span><span class="project-cover-art" aria-hidden="true">${icon(p.type === "Evento" ? "aperture" : p.type === "Social" ? "image" : "film")}</span><span class="project-cover-client">${esc(p.client || "Project Lab")}</span><span class="project-cover-corner" aria-hidden="true"></span></span>
- <span class="project-card-content"><span class="project-card-heading"><h3>${esc(p.name)}</h3>${icon("arrow")}</span><span class="project-card-subtitle">${esc(p.client || "Cliente a definir")}</span><span class="mini-progress"><span style="width:${p.progress}%"></span></span><span class="card-bottom"><span>${icon("calendar")} ${dateLabel(p.date)}</span>${avatars(p.team)}</span></span></button>`;
+ <span class="project-cover atelier-cover ${style} ${cover?'has-client-cover':''}">${cover?`<img class="project-client-cover" src="${cover}" alt="" width="960" height="400" loading="lazy">`:''}<span class="project-cover-type">${esc(p.type || "Produção")}</span>${logo?`<span class="project-client-logo"><img src="${logo}" alt="Logo de ${esc(p.client)}" width="64" height="64" loading="lazy"></span>`:''}<span class="project-cover-client">${esc(p.client || "Project Lab")}</span></span>
+ <span class="project-card-content"><span class="project-card-heading"><h3>${esc(p.name)}</h3>${icon("arrow")}</span><span class="atelier-project-progress"><span>Concluído</span><strong>${p.progress}%</strong></span><span class="mini-progress"><span style="width:${p.progress}%"></span></span><span class="card-bottom"><span>${icon("calendar")} ${dateLabel(p.date)}</span>${avatars(p.team)}</span></span></button>`;
 }
 function projects() {
   let items = state.projects.filter((p) =>
@@ -704,20 +697,21 @@ function projects() {
   );
   return (
     header(
-      "Projetos",
-      "Da ideia ao arquivo final. Acompanhe cada etapa.",
+      "Sua próxima grande entrega.",
+      "Todas as produções. Cada uma no seu tempo.",
       btn("Novo projeto", "new-project"),
     ) +
-    `<div class="toolbar"><div class="toolbar-left"><label class="input-search">${icon("search")}<input id="project-search" aria-label="Buscar projetos" placeholder="Buscar projeto ou cliente…" value="${esc(projectQuery)}"></label></div><div class="segmented"><button data-view="board" class="${view === "board" ? "active" : ""}">${icon("grid")} Quadro</button><button data-view="list" class="${view === "list" ? "active" : ""}">${icon("tasks")} Lista</button></div></div><div id="project-results">${projectResults(items)}</div>`
+    `<div class="toolbar"><div class="toolbar-left"><label class="input-search">${icon("search")}<input id="project-search" aria-label="Buscar projetos" placeholder="Buscar projeto ou cliente…" value="${esc(projectQuery)}"></label></div><div class="segmented"><button data-view="gallery" class="${view === "gallery" ? "active" : ""}">${icon("image")} Galeria</button><button data-view="board" class="${view === "board" ? "active" : ""}">${icon("grid")} Quadro</button><button data-view="list" class="${view === "list" ? "active" : ""}">${icon("tasks")} Lista</button></div></div><div id="project-results">${projectResults(items)}</div>`
   );
 }
 function projectResults(items) {
+  if (view === "gallery") return `<div class="pulse-gallery">${items.map(projectCard).join('') || empty('Nenhuma produção encontrada. Tente outro nome ou crie um projeto.')}</div>`;
   return view === "list"
     ? `<div class="panel">${projectTable(items)}</div>`
     : `<div class="kanban">${stages
         .map(
           (s, i) =>
-            `<section class="kanban-column" data-stage-drop="${i}"><h2 class="column-head"><i class="stage-dot" style="background:${stageColors[i]}"></i>${s}<span>${items.filter((p) => p.stage === i).length}</span></h2>${items
+            `<section class="kanban-column" data-stage-drop="${i}"><h2 class="column-head"><i class="stage-dot" style="--stage-color:${stageColors[i]}"></i>${s}<span>${items.filter((p) => p.stage === i).length}</span></h2>${items
               .filter((p) => p.stage === i)
               .map(projectCard)
               .join(
@@ -727,6 +721,8 @@ function projectResults(items) {
         .join("")}</div>`;
 }
 function clientLogo(name) {
+  const logo=safeLocalImage(state.clients.find(c=>c.name===name)?.logo);
+  if(logo)return `<div class="contact-logo client-logo has-image"><img src="${logo}" alt="Logo de ${esc(name)}" width="64" height="64" loading="lazy"></div>`;
   const clean = String(name || "").trim();
   const initials = clean
     .split(/\s+/)
@@ -764,8 +760,8 @@ function clientCards() {
 function clients() {
   return (
     header(
-      "Clientes",
-      "Boas histórias começam com boas relações.",
+      "Conexões",
+      "Clientes, contatos e as histórias que vocês criam juntos.",
       btn("Novo cliente", "new-client"),
     ) +
     `<div class="toolbar"><label class="input-search">${icon("search")}<input id="client-search" aria-label="Buscar clientes" placeholder="Buscar cliente…" value="${esc(clientQuery)}"></label><select class="btn" id="client-sort" aria-label="Ordenar clientes"><option value="name" ${clientSort === "name" ? "selected" : ""}>Ordem alfabética</option><option value="revenue" ${clientSort === "revenue" ? "selected" : ""}>Maior valor em projetos</option></select></div><div id="client-results">${clientCards()}</div>`
@@ -782,7 +778,7 @@ function finance() {
     state.costs.filter((c) => c.paid && !c.date).length;
   let html =
     header(
-      "Financeiro",
+      "Caixa do estúdio",
       "Recebimentos, despesas e caixa por data de pagamento.",
       btn("Nova receita", "new-income") +
         btn("Novo custo", "new-cost", "plus", ""),
@@ -801,7 +797,7 @@ function finance() {
     (undated
       ? `<div class="notice">${undated} lançamento(s) recebido(s)/pago(s) sem data. Edite as datas para incluí-los no caixa e nos gráficos.</div>`
       : "") +
-    `<div class="stats">${stat("Recebido", money(summary.revenue), "Pela data de recebimento", "wallet")}${stat("Despesas pagas", money(summary.costs), "Pela data de pagamento", "chart")}${stat("Resultado de caixa", money(summary.profit), "Recebimentos − despesas pagas", "trend")}${stat("A receber", money(summary.receivable), "Pendências de todos os períodos", "clock")}</div>`;
+    `<div class="stats">${stat("Recebido", money(summary.revenue), "Pela data de recebimento", "wallet", summary.revenue>0?'value-positive':'')}${stat("Despesas pagas", money(summary.costs), "Pela data de pagamento", "chart", summary.costs>0?'value-negative':'')}${stat("Resultado de caixa", money(summary.profit), "Recebimentos − despesas pagas", "trend", summary.profit>0?'value-positive':summary.profit<0?'value-negative':'')}${stat("A receber", money(summary.receivable), "Pendências de todos os períodos", "clock", summary.receivable>0?'value-pending':'')}</div>`;
   if (financeView === "income" || financeView === "costs") {
     const isCost = financeView === "costs";
     const rows = (isCost ? state.costs : state.income).filter(
@@ -873,6 +869,7 @@ function finance() {
   return (
     html +
     chart +
+    (financeView==='overview'?renderDistribution(state,{period:selected,metric:distributionMetric,group:distributionGroup,esc,money}):'') +
     (financeView === "cash"
       ? `<div class="history-table">${panel("Fluxo de caixa", "Saldo de abertura anterior ao primeiro lançamento: " + money(state.openingBalance), simpleTable(["MÊS", "ENTRADAS", "SAÍDAS", "RESULTADO", "ACUMULADO"], cashRows), canEdit() ? btn("Editar abertura", "opening-balance", "wallet", "small") : "")}</div>`
       : "")
@@ -885,7 +882,7 @@ function taskRows(tasks) {
   return tasks
     .map(
       (t) =>
-        `<div class="task-row ${t.done ? "done" : ""}"><label><input type="checkbox" data-task="${t.id}" ${t.done ? "checked" : ""}><span>${esc(t.name)}<small>${esc(t.project)}</small></span></label>${badge(t.date === isoDate(today) ? "Hoje" : dateLabel(t.date), t.done ? "green" : "blue")}${t.assignee ? avatars([t.assignee]) : '<span class="muted">A definir</span>'}${canEdit() ? btn("Editar", "edit-task:" + t.id, "file", "small") : ""}</div>`,
+        `<div class="task-row ${t.done ? "done" : ""}"><label><input type="checkbox" data-task="${t.id}" ${t.done ? "checked" : ""}><span>${esc(t.name)}<small>${esc(t.project)}</small></span></label>${taskDateBadge(t,today,esc)}${t.assignee ? avatars([t.assignee]) : '<span class="muted">A definir</span>'}${canEdit() ? btn("Editar", "edit-task:" + t.id, "file", "small") : ""}</div>`,
     )
     .join("");
 }
@@ -906,17 +903,7 @@ function tasks() {
       "task-view",
     ) +
     (taskView === "planner"
-      ? `<div class="planner">${Array.from({ length: 5 }, (_, i) => {
-          let d = new Date(today);
-          d.setDate(d.getDate() + i);
-          return `<section class="planner-col"><h3>${new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "numeric" }).format(d)}</h3>${state.tasks
-            .filter((t) => t.date === isoDate(d))
-            .map(
-              (t) =>
-                `<div class="planner-task">${esc(t.name)}<small>${esc(t.project)}</small></div>`,
-            )
-            .join("")}</section>`;
-        }).join("")}</div>`
+      ? renderWeeklyPlanner(state.tasks,{today,offset:plannerWeekOffset,esc,icon,canEdit:canEdit()})
       : `<div class="panel">${taskRows(state.tasks.filter((t) => (taskView === "done" ? t.done : !t.done))) || empty("Nenhuma tarefa por aqui.")}</div>`)
   );
 }
@@ -941,7 +928,7 @@ function calendar() {
           .filter((e) => e.date === s)
           .map(
             (e) =>
-              `<button class="calendar-event" data-action="event:${e.id}">${esc(e.time)} · ${esc(e.name)}</button>`,
+              `<button class="calendar-event event-tone-${eventTone(e)}" data-action="event:${e.id}" aria-label="${esc(e.type)}: ${esc(e.name)}, ${esc(e.time)}"><i aria-hidden="true"></i><span><strong>${esc(e.time)}</strong> ${esc(e.name)}<small>${esc(e.type)}</small></span></button>`,
           )
           .join("")}</div>`;
       },
@@ -951,7 +938,7 @@ function calendar() {
 function commercial() {
   let html =
     header(
-      "Comercial",
+      "Negócios",
       "Transforme conversas em novos projetos.",
       btn("Nova oportunidade", "new-lead"),
     ) +
@@ -993,7 +980,7 @@ function commercial() {
         ]
           .map(
             (s, i) =>
-              `<section class="kanban-column"><h2 class="column-head"><i class="stage-dot" style="background:${stageColors[i]}"></i>${s}<span>${state.leads.filter((l) => l.stage === i).length}</span></h2>${state.leads
+              `<section class="kanban-column"><h2 class="column-head"><i class="stage-dot" style="--stage-color:${stageColors[i]}"></i>${s}<span>${state.leads.filter((l) => l.stage === i).length}</span></h2>${state.leads
                 .filter((l) => l.stage === i)
                 .map(
                   (l) =>
@@ -1008,11 +995,11 @@ function goals() {
   const annual = financialSummary(state, String(today.getFullYear()));
   return (
     header(
-      "Objetivos",
+      "Metas",
       "Acompanhe os resultados do seu estúdio.",
       btn("Editar meta", "goal", "target"),
     ) +
-    `<div class="grid-two">${goalCard()}${panel("Meta anual", "Um objetivo independente para o ano.", `<div class="panel-body"><p class="eyebrow">OBJETIVO DO ANO</p><p class="big-amount">${money(state.annualGoal)}</p><div class="goal-details"><div><small>Recebido no ano</small><strong>${money(annual.revenue)}</strong></div><div><small>Falta alcançar</small><strong>${money(Math.max(0, state.annualGoal - annual.revenue))}</strong></div></div></div>`, btn("Editar", "annual-goal", "target", "small"))}</div>`
+    `<div class="goals-workspace">${goalCard()}<section class="panel goal-summary-panel annual-goal-panel"><header><div><span class="goal-period">${today.getFullYear()} · Visão de longo prazo</span><h2>Meta anual</h2></div>${btn('Editar','annual-goal','target','small')}</header><div class="annual-goal-target"><span>Seu objetivo para o ano</span><strong class="big-amount">${money(state.annualGoal)}</strong></div><div class="annual-goal-progress"><div><span>Progresso no ano</span><strong>${state.annualGoal>0?Math.round(annual.revenue/state.annualGoal*100)+'%':'—'}</strong></div><div class="mini-progress"><span style="width:${state.annualGoal>0?Math.min(100,annual.revenue/state.annualGoal*100):0}%"></span></div></div><div class="goal-details"><div><small>Recebido no ano</small><strong class="value-positive">${money(annual.revenue)}</strong></div><div><small>Falta alcançar</small><strong>${money(Math.max(0,state.annualGoal-annual.revenue))}</strong></div></div><footer>Objetivo independente da meta mensal. Valores por data de recebimento.</footer></section></div>`
   );
 }
 
@@ -1021,7 +1008,7 @@ const toolCard = (id, title, description, ic, note) =>
 function toolsPage() {
   return (
     header(
-      "Ferramentas criativas",
+      "Bancada criativa",
       "Do planejamento ao set. Um lugar para organizar suas ideias.",
       "",
     ) +
@@ -1031,8 +1018,8 @@ function toolsPage() {
 function settings() {
   const disabled = !canEdit() ? "disabled" : "";
   const accentPresets = [
+    ["Grafite", "#6d6e73"],
     ["Citrino", "#d7ee78"],
-    ["Coral", "#ffad91"],
     ["Céu", "#9bc9ff"],
     ["Lilás", "#cbb8ff"],
     ["Menta", "#9fe7c2"],
@@ -1057,6 +1044,8 @@ function render() {
   if (appMode === "locked") return;
   disposeChart();
   disposePolishMotion();
+  disposeSurface();
+  disposeDistribution();
   const renderers = {
     dashboard,
     projects,
@@ -1087,20 +1076,27 @@ function render() {
     document.getElementById("crumb").textContent = "Projetos / Detalhes";
   }
   renderIcons();
-  disposePolishMotion = bindPolishMotion(content, { reduced: matchMedia("(prefers-reduced-motion: reduce)").matches });
   document.title = `${navItems.find((n) => n[0] === route)?.[1] || "Configurações"} — Project Lab`;
   bindForms();
+  disposeDistribution = bindDistribution(content);
+  content.querySelectorAll('[data-week-step]').forEach(button=>button.onclick=()=>{plannerWeekOffset=button.dataset.weekStep==='today'?0:plannerWeekOffset+Number(button.dataset.weekStep);render();content.querySelector(`[data-week-step="${button.dataset.weekStep}"]`)?.focus({preventScroll:true})});
+  for(const id of ['distribution-metric','distribution-group']) {
+    const control=content.querySelector('#'+id);
+    if(control)control.onchange=()=>{if(id==='distribution-metric')distributionMetric=control.value;else distributionGroup=control.value;render();content.querySelector('#'+id)?.focus({preventScroll:true})};
+  }
   if (route === "dashboard") applyDashboardPreferences();
-  const motionView = `${location.hash}:${financeView}:${financePeriod}`;
+  const motionView = `${location.hash}:${financeView}:${financePeriod}:${taskView}:${commercialView}`;
   const enabled =
     motionView !== lastMotionView &&
     document.body.dataset.inputModality !== "keyboard";
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches || document.body.dataset.effects === 'off';
+  disposePolishMotion = bindPulseMotion(content,{animate:enabled&&!reduced});
   disposeChart = bindFinanceChart(content, {
     animate: enabled,
     reducedMotion: reduced,
   });
-  animateSurface(content, { enabled, reduced });
+  disposeSurface = animateSurface(content, { enabled, reduced, numberMode:route==='dashboard'&&!dashboardVisited?'count':'reveal' });
+  if(route==='dashboard')dashboardVisited=true;
   lastMotionView = motionView;
   if (!canEdit())
     document
@@ -1117,6 +1113,9 @@ function openModal(title, html, wide = false) {
   modal.classList.toggle("wide", wide);
   if (!modal.open) modal.showModal();
   renderIcons(modal);
+  if (document.body.dataset.effects === 'on' && document.body.dataset.inputModality !== 'keyboard' && title !== 'Buscar no estúdio' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    modal.animate([{opacity:.7,transform:'translateY(6px) scale(.99)',filter:'blur(2px)'},{opacity:1,transform:'translateY(0) scale(1)',filter:'blur(0)'}],{duration:220,easing:'cubic-bezier(.22,1,.36,1)'});
+  }
 }
 function closeModal() {
   if (saving) return;
@@ -1162,6 +1161,7 @@ function form(title, fields, onSubmit, button = "Salvar", afterSave) {
   );
   document.getElementById("entry-form").onsubmit = async (e) => {
     e.preventDefault();
+    if(Number(e.target.dataset.mediaPending)>0)return toast('Aguarde a imagem ficar pronta antes de salvar.');
     if (saving || saveConflict)
       return toast("Carregue a versão atual antes de continuar.");
     let data = Object.fromEntries(new FormData(e.target));
@@ -1191,6 +1191,8 @@ function form(title, fields, onSubmit, button = "Salvar", afterSave) {
     );
     if (afterSave) afterSave(data);
   };
+  bindMediaFields(document.getElementById('entry-form'));
+  bindEventColors(document.getElementById('entry-form'));
 }
 function newProject(id) {
   const p = state.projects.find((item) => item.id === id);
@@ -1301,7 +1303,8 @@ function newProject(id) {
         state.projects[state.projects.findIndex((item) => item.id === p.id)] =
           project;
       else state.projects.unshift(project);
-      // Regenerate only derived project events. Manual agenda entries remain untouched.
+      // Preserve chosen colors when dates of generated events are edited.
+      const previousEvents=state.events.filter(e=>e.projectId===project.id&&e.id.startsWith('auto-'));
       state.events = state.events.filter(
         (event) =>
           !(event.projectId === project.id && event.id.startsWith("auto-")),
@@ -1313,6 +1316,7 @@ function newProject(id) {
           client: project.client,
           projectId: project.id,
           type: "Captação",
+          color: previousEvents.find(e=>e.type==='Captação'&&e.date===date)?.color || previousEvents.find(e=>e.id===`auto-${project.id}-capture-${index}`)?.color || 'auto',
           date,
           time: "08:00",
         });
@@ -1323,6 +1327,7 @@ function newProject(id) {
           client: project.client,
           projectId: project.id,
           type: "Entrega",
+          color: previousEvents.find(e=>e.type==='Entrega')?.color || 'auto',
           date: project.date,
           time: "18:00",
         });
@@ -1564,12 +1569,16 @@ async function action(a) {
     return clientEditor(a.split(":")[1]);
   if (a === "new-event" || a.startsWith("edit-event:"))
     return eventEditor(a.split(":")[1]);
+  if(a.startsWith('event-color:')) {
+    const event=state.events.find(e=>e.id===a.slice(12));if(!event)return;
+    return form('Cor do compromisso',eventColorField(event.color,event.type),data=>{event.color=data.color});
+  }
   if (a.startsWith("client:")) {
     const c = state.clients.find((c) => c.id === a.slice(7));
     if (!c) return;
     return openModal(
       c.name,
-      `<p class="muted">${esc(c.segment)}</p><div class="detail-grid"><div><small>Contato</small><strong>${esc(c.contact || "Não informado")}</strong></div><div><small>E-mail</small><strong>${esc(c.email || "Não informado")}</strong></div></div>${canEdit() ? `<div class="form-actions">${btn("Editar cliente", "edit-client:" + c.id, "settings", "")}</div>` : ""}<h3 class="ops-subtitle">Projetos do cliente</h3>${projectTable(state.projects.filter((p) => p.clientId === c.id || (!p.clientId && p.client === c.name)))}`,
+      `<div class="client-detail-identity">${clientLogo(c.name)}<div><strong>${esc(c.name)}</strong><p>${esc(c.segment)}</p></div>${canEdit()?btn(c.logo?'Alterar imagem':'Adicionar imagem','edit-client:'+c.id,'image','small'):''}</div><div class="detail-grid"><div><small>Contato</small><strong>${esc(c.contact || "Não informado")}</strong></div><div><small>E-mail</small><strong>${esc(c.email || "Não informado")}</strong></div></div>${canEdit() ? `<div class="form-actions">${btn("Editar cliente", "edit-client:" + c.id, "settings", "")}</div>` : ""}<h3 class="ops-subtitle">Projetos do cliente</h3>${projectTable(state.projects.filter((p) => p.clientId === c.id || (!p.clientId && p.client === c.name)))}`,
       true,
     );
   }
@@ -1578,7 +1587,7 @@ async function action(a) {
     if (!e) return;
     return openModal(
       e.name,
-      `${badge(e.type)}<div class="detail-grid"><div><small>Data</small><strong>${dateLabel(e.date)}</strong></div><div><small>Horário</small><strong>${esc(e.time)}</strong></div><div><small>Cliente / projeto</small><strong>${esc(e.client || "Não informado")}</strong></div></div><div class="form-actions">${e.id.startsWith("auto-") && e.projectId ? btn("Editar no projeto", "edit-project:" + e.projectId, "film", "") : canEdit() ? btn("Editar compromisso", "edit-event:" + e.id, "settings", "") : ""}</div>`,
+      `<span class="event-category event-tone-${eventTone(e)}"><i aria-hidden="true"></i>${esc(e.type)}</span><div class="detail-grid"><div><small>Data</small><strong>${dateLabel(e.date)}</strong></div><div><small>Horário</small><strong>${esc(e.time)}</strong></div><div><small>Cliente / projeto</small><strong>${esc(e.client || "Não informado")}</strong></div></div><div class="form-actions">${canEdit()?btn('Alterar cor','event-color:'+e.id,'settings',''):''}${e.id.startsWith("auto-") && e.projectId ? btn("Editar no projeto", "edit-project:" + e.projectId, "film", "") : canEdit() ? btn("Editar compromisso", "edit-event:" + e.id, "settings", "") : ""}</div>`,
     );
   }
   if (a === "prev-month" || a === "next-month") {
@@ -1682,10 +1691,13 @@ modal.addEventListener("click", (e) => {
       closeModal();
   }
 });
+function setMenuOpen(open) {
+  document.getElementById('sidebar').classList.toggle('open', open);
+  document.getElementById('menu-toggle').setAttribute('aria-expanded', String(open));
+}
 document.getElementById("menu-toggle").onclick = () =>
-  document.getElementById("sidebar").classList.toggle("open");
-document.getElementById("shade").onclick = () =>
-  document.getElementById("sidebar").classList.remove("open");
+  setMenuOpen(!document.getElementById('sidebar').classList.contains('open'));
+document.getElementById("shade").onclick = () => setMenuOpen(false);
 document.addEventListener("keydown", (e) => {
   if (appMode === "locked" || saving) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -1693,10 +1705,10 @@ document.addEventListener("keydown", (e) => {
     showSearch();
   }
   if (e.key === "Escape")
-    document.getElementById("sidebar").classList.remove("open");
+    setMenuOpen(false);
 });
 window.addEventListener("hashchange", () => {
-  document.getElementById("sidebar").classList.remove("open");
+  setMenuOpen(false);
   if (modal.open) closeModal();
   render();
   window.scrollTo(0, 0);
@@ -1732,6 +1744,14 @@ const auth = createAuth({
       warning =
         "Não foi possível ler o salvamento local. Os exemplos foram abertos sem apagar o conteúdo anterior.";
     }
+    // Update appearance once without removing the user's existing demo records.
+    try {
+      if (!localStorage.getItem('project-lab-pulse-clean-appearance')) {
+        state.theme = 'light'; state.accent = '#6d6e73';
+        localStorage.setItem(storageKey, JSON.stringify(state));
+        localStorage.setItem('project-lab-pulse-clean-appearance', '1');
+      }
+    } catch { /* Keep the in-memory preview usable when storage is unavailable. */ }
     acknowledged = structuredClone(state);
     render();
     document.getElementById("save-status").textContent =
@@ -1747,7 +1767,10 @@ const auth = createAuth({
     state = data;
     appMode = "online";
     loadProfileAvatar();
-    acknowledged = structuredClone(data);
+    if (syncCurrentUserToTeam() && context.role !== "viewer") {
+      try { state = await next.save(state); } catch { state = data; syncCurrentUserToTeam(); }
+    }
+    acknowledged = structuredClone(state);
     failedDraft = null;
     saveConflict = false;
     render();
@@ -2351,41 +2374,13 @@ document.addEventListener("drop", async (event) => {
 });
 
 function applyAppearance() {
-  const hex = state.accent || BRAND_ACCENT;
-  const rgb = hex
-    .slice(1)
-    .match(/../g)
-    .map((v) => parseInt(v, 16));
-  const lum = (values) =>
-    values
-      .map((v) => v / 255)
-      .map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
-      .reduce((n, v, i) => n + v * [0.2126, 0.7152, 0.0722][i], 0);
-  const background = state.theme === "light" ? [255, 255, 255] : [24, 27, 23];
-  const contrast = (a, b) =>
-    (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
-  let accessible = [...rgb];
-  const target = state.theme === "light" ? 0 : 255;
-  for (let i = 0; i < 20 && contrast(accessible, background) < 4.5; i++)
-    accessible = accessible.map((v) => v + (target - v) * 0.15);
-  document.body.style.setProperty("--accent", hex);
-  document.body.style.setProperty(
-    "--blue",
-    `rgb(${accessible.map(Math.round).join(",")})`,
-  );
-  document.body.style.setProperty(
-    "--accent-ink",
-    contrast(rgb, [255, 255, 255]) >= 4.5 ? "#ffffff" : "#090b10",
-  );
-  document.body.style.setProperty(
-    "--blue-tint",
-    `color-mix(in srgb, ${hex} 15%, var(--panel))`,
-  );
+  const tokens = appearanceTokens(state.accent, state.theme);
+  for (const [name, value] of Object.entries(tokens)) document.body.style.setProperty("--" + name, value);
 }
 const dashboardWidgets = [
   ["stats", "Indicadores financeiros"],
   ["production", "Etapas da produção"],
-  ["projects", "Projetos em foco"],
+  ["projects", "Panorama financeiro"],
   ["tasks", "Próximas tarefas"],
   ["goal", "Meta do mês"],
   ["agenda", "Agenda"],
@@ -2545,7 +2540,9 @@ function clientEditor(id) {
     ) +
       field("Segmento", "segment", client?.segment || "") +
       field("Pessoa de contato", "contact", client?.contact || "") +
-      field("E-mail", "email", client?.email || "", "email", true),
+      field("E-mail", "email", client?.email || "", "email", true)+
+      mediaField('Logo do cliente','logo',client?.logo,esc)+
+      mediaField('Capa das produções deste cliente','cover',client?.cover,esc,'cover'),
     (data) => {
       const next = { ...data, id: client?.id || crypto.randomUUID() };
       state.clients = state.clients
@@ -2605,7 +2602,7 @@ function eventEditor(id) {
         "type",
         ["Reunião", "Captação", "Entrega", "Pagamento"],
         event?.type || "Reunião",
-      ),
+      )+eventColorField(event?.color,event?.type),
     (data) => {
       const next = {
         ...data,

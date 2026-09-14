@@ -2,9 +2,13 @@ import { z } from "zod";
 import { proposalFields, normalizeProposals } from "./proposal-data.js";
 import { operationsFields } from "./operations-data.js";
 import { creativeFields } from "./creative-data.js";
+import { safeLocalImage, safeProfileImage } from './profile-media.js';
+import { EVENT_COLORS } from './event-colors.js';
 
 const text = z.string().max(500).default("");
 const note = z.string().max(50000).default("");
+const localImage = z.string().max(220000).refine(v=>v===''||Boolean(safeLocalImage(v)),'Imagem inválida').default('');
+const profileImage = z.string().max(220000).refine(v=>v===''||Boolean(safeProfileImage(v)),'Foto de perfil inválida').default('');
 const amount = z.number().finite().min(0).max(1e10).default(0);
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/);
 export const dateSchema = z
@@ -68,13 +72,17 @@ export const stateSchema = z
       }),
     ),
     clients: list(
-      z.object({ ...base, segment: text, email: text, contact: text }),
+      z.object({ ...base, segment: text, email: text, contact: text, logo:localImage, cover:localImage }),
     ),
     team: list(
       z.object({
         ...base,
         role: text,
         initials: z.string().max(8).default("PL"),
+        photo:localImage,
+        accountId:text,
+        accountPhoto:profileImage,
+        color:z.string().regex(/^#[a-f\d]{6}$/i).default('#9bc9ff'),
       }),
     ),
     tasks: list(
@@ -90,6 +98,7 @@ export const stateSchema = z
     events: list(
       z.object({
         ...base,
+        color: z.enum(EVENT_COLORS).default('auto'),
         client: text,
         projectId: text,
         type: text,

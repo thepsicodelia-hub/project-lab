@@ -177,6 +177,8 @@ test("operation costs, actual margin and equipment amortization remain separate"
     days: 2,
     revenue: 200,
     dailyCost: 50,
+    amortized: 100,
+    amortizedPercent: 5,
     recovered: 10,
   });
   assert.deepEqual(projectMetrics(state, "p"), {

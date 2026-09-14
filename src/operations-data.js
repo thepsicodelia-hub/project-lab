@@ -86,10 +86,14 @@ export function equipmentMetrics(state, equipment) {
   );
   const days = equipment.uses + links.reduce((n, x) => n + x.days, 0);
   const revenue = links.reduce((n, x) => n + x.revenue, 0);
+  const dailyCost = equipment.value / equipment.life;
+  const amortized = Math.min(equipment.value, days * dailyCost);
   return {
     days,
     revenue,
-    dailyCost: equipment.value / equipment.life,
+    dailyCost,
+    amortized,
+    amortizedPercent: equipment.value > 0 ? amortized / equipment.value * 100 : 0,
     recovered: equipment.value ? (revenue / equipment.value) * 100 : 0,
   };
 }

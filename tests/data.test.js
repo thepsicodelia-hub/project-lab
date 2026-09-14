@@ -26,3 +26,9 @@ test('rejects invalid dates, unsafe ids, duplicate ids, non-finite money and ove
   assert.throws(()=>parseState({...state,script:'a'.repeat(50001)}));
   assert.throws(()=>parseState({...state,projects:Array.from({length:30},(_,i)=>({id:`p${i}`,name:'Project',stage:0,note:'x'.repeat(50000)}))}));
 });
+test('team profiles accept Google photos and reject untrusted remote images',()=>{
+  const state=emptyState();
+  const parsed=parseState({...state,team:[{id:'m1',name:'Ana',role:'Direção',initials:'AN',accountId:'user-1',accountPhoto:'https://lh3.googleusercontent.com/a/avatar'}]});
+  assert.equal(parsed.team[0].accountPhoto,'https://lh3.googleusercontent.com/a/avatar');
+  assert.throws(()=>parseState({...state,team:[{id:'m1',name:'Ana',accountPhoto:'https://tracker.example/avatar.jpg'}]}));
+});

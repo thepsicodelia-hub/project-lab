@@ -115,6 +115,10 @@ export function bindFinanceChart(
   let selected = Math.min(11, Math.max(0, Number(chart.dataset.selected))),
     geometry;
   const visibility = { revenue: true, costs: true, balance: true };
+  const animations=new Set();let revealObserver;
+  const stopAnimations=()=>{animations.forEach(a=>a.cancel());animations.clear()};
+  const track=a=>{animations.add(a);a.finished.then(()=>animations.delete(a)).catch(()=>{})};
+  const motionAllowed=()=>animate&&!reducedMotion&&document.body.dataset.effects!=='off'&&!document.hidden&&document.body.dataset.inputModality!=='keyboard'&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
   function select(index, announce = true) {
     selected = Math.min(rows.length - 1, Math.max(0, index));
     const point = geometry.points[selected],
@@ -141,6 +145,7 @@ export function bindFinanceChart(
     output.innerHTML = `<strong>${months[selected]}</strong><span>Entradas <b>${format.format(row.revenue)}</b></span><span>Saídas <b>${format.format(row.costs)}</b></span><span>Saldo <b>${format.format(row.balance)}</b></span>`;
   }
   function draw() {
+    stopAnimations();
     geometry = chartGeometry(rows, Math.max(260, canvas.clientWidth));
     const g = geometry,
       barWidth = Math.max(3, Math.min(13, (g.width - g.left - g.right) / 40));
@@ -161,26 +166,34 @@ export function bindFinanceChart(
     select(selected, false);
   }
   draw();
-  if (animate && !reducedMotion) {
-    svg.querySelector(".chart-balance").animate(
+  function reveal() {
+    if(!motionAllowed()||!canvas.animate)return;
+    track(canvas.animate([{opacity:.8,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}],{duration:500,easing:'cubic-bezier(.22,1,.36,1)'}));
+    track(svg.querySelector(".chart-balance").animate(
       [
         { strokeDasharray: "1000", strokeDashoffset: "1000" },
         { strokeDasharray: "1000", strokeDashoffset: "0" },
       ],
-      { duration: 700, easing: "cubic-bezier(.22,1,.36,1)" },
-    );
-    svg.querySelectorAll(".chart-bar").forEach((el) => {
+      { duration: 850, easing: "cubic-bezier(.22,1,.36,1)" },
+    ));
+    svg.querySelectorAll(".chart-bar").forEach((el,i) => {
       el.style.transformBox = "fill-box";
       el.style.transformOrigin = "bottom";
-      el.animate(
+      track(el.animate(
         [
           { transform: "scaleY(.05)", opacity: 0.4 },
           { transform: "scaleY(1)", opacity: 1 },
         ],
-        { duration: 440, easing: "cubic-bezier(.22,1,.36,1)" },
-      );
+        { duration: 650,delay:i%12*12, easing: "cubic-bezier(.22,1,.36,1)" },
+      ));
     });
   }
+  if(animate&&!reducedMotion&&'IntersectionObserver' in window) {
+    revealObserver=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){revealObserver.disconnect();reveal()}},{threshold:.2});
+    revealObserver.observe(canvas);
+  }
+  const pause=()=>{if(!motionAllowed()){revealObserver?.disconnect();stopAnimations()}};
+  document.addEventListener('projectlab:effects',pause);document.addEventListener('visibilitychange',pause);
   range.oninput = () => select(Number(range.value));
   canvas.onpointermove = (event) => {
     if (event.pointerType !== "mouse") return;
@@ -225,5 +238,5 @@ export function bindFinanceChart(
     }
   });
   observer.observe(canvas);
-  return () => observer.disconnect();
+  return () => {observer.disconnect();revealObserver?.disconnect();stopAnimations();document.removeEventListener('projectlab:effects',pause);document.removeEventListener('visibilitychange',pause)};
 }

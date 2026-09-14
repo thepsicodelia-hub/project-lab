@@ -1,6 +1,11 @@
 import { equipmentMetrics, projectMetrics } from "./operations-data.js";
 import { safeWebsite } from "./proposal-data.js";
 import "./operations.css";
+import { equipmentCard,equipmentCategory } from "./atelier-ui.js";
+import { progressRing } from './progress-ring.js';
+import { personAvatar,mediaField,clientForProject,safeLocalImage } from './profile-media.js';
+import { taskDateBadge } from './weekly-planner.js';
+import { INVENTORY_CATEGORIES,inventoryVector,inventoryGroups } from './inventory-identity.js';
 
 export function createOperations(ctx) {
   const {
@@ -25,7 +30,14 @@ export function createOperations(ctx) {
   let projectId = "",
     projectTab = "overview",
     teamTab = "members",
+    teamPerson = "all",
+    inventoryFilter = 'all',
+    inventoryAnimation = null,
     pendingDelete = null;
+  const inventoryFilterKey='project-lab-inventory-category';
+  const validInventoryFilter=value=>value==='all'||INVENTORY_CATEGORIES.some(c=>c.id===value);
+  try {const saved=localStorage.getItem(inventoryFilterKey);if(validInventoryFilter(saved))inventoryFilter=saved;} catch {}
+  const rememberInventoryFilter=()=>{try{localStorage.setItem(inventoryFilterKey,inventoryFilter)}catch{}};
   const state = () => getState(),
     uid = () => crypto.randomUUID();
   const blank = (text) => `<div class="ops-empty">${esc(text)}</div>`;
@@ -38,7 +50,7 @@ export function createOperations(ctx) {
       ? `<div class="ops-actions">${btn("Editar", `ops:edit:${kind}:${id}`, "settings", "small")}${btn("Excluir", `ops:delete:${kind}:${id}`, "x", "small")}</div>`
       : "";
   const metrics = (items) =>
-    `<div class="ops-metrics">${items.map(([label, value, description]) => `<div><span>${label}</span><strong>${value}</strong>${description ? `<small>${description}</small>` : ""}</div>`).join("")}</div>`;
+    `<div class="ops-metrics">${items.map(([label, value, description, tone='']) => `<div><span>${label}</span><strong class="${tone}">${value}</strong>${description ? `<small>${description}</small>` : ""}</div>`).join("")}</div>`;
   const projectOptions = () => [
     ["", "Selecione um projeto"],
     ...state().projects.map((p) => [p.id, p.name]),
@@ -57,22 +69,13 @@ export function createOperations(ctx) {
       cta = "";
     if (teamTab === "members") {
       cta = btn("Adicionar pessoa", "ops:new:member");
-      content = table(
-        ["PESSOA", "FUNÇÃO", "DEPARTAMENTO", "CONTATO", ""],
-        state().team.map((m) => {
-          const d = state().memberDetails.find((d) => d.id === m.id);
-          return [
-            `<span class="ops-person"><span class="avatar">${esc(m.initials)}</span><strong>${esc(m.name)}</strong></span>`,
-            esc(m.role),
-            esc(
-              state().departments.find((x) => x.id === d?.departmentId)?.name ||
-                "—",
-            ),
-            esc(d?.email || "—"),
-            actions("member", m.id),
-          ];
-        }),
-      );
+      content = `<div class="clean-people">${state().team.map(m=>{
+        const d = state().memberDetails.find(d=>d.id===m.id);
+        const assigned = state().tasks.filter(t=>t.assignee===m.initials && !t.done).length;
+        const productions = state().projects.filter(p=>p.team.includes(m.initials) && p.stage!==3).length;
+        const department = state().departments.find(x=>x.id===d?.departmentId)?.name;
+        return `<article class="clean-person"><div class="clean-person-heading">${personAvatar(m,esc,'clean-person-avatar')}<div><h2>${esc(m.name)}</h2><p>${esc(m.role || 'Função a definir')}</p></div></div><div class="clean-person-contact"><span>${esc(department || 'Sem departamento')}</span><span>${esc(d?.email || 'Contato não informado')}</span></div><dl class="clean-person-work"><div><dt>Produções ativas</dt><dd>${productions}</dd></div><div><dt>Tarefas abertas</dt><dd>${assigned}</dd></div></dl><div class="clean-person-actions">${btn('Ver tarefas','ops:team-filter:'+m.id,'tasks','small')}${canEdit()?btn('Editar','ops:edit:member:'+m.id,'settings','small'):''}</div></article>`;
+      }).join('') || blank('Adicione as pessoas que fazem parte da sua produção.')}</div>`;
     } else if (teamTab === "suppliers") {
       cta = btn("Novo fornecedor", "ops:new:supplier");
       content = table(
@@ -116,17 +119,16 @@ export function createOperations(ctx) {
       }`;
     } else {
       cta = btn("Nova tarefa", "new-task");
-      content = table(
+      const person = state().team.find(m=>m.id===teamPerson);
+      const tasks = state().tasks.filter(t=>!person || t.assignee===person.initials);
+      content = `<div class="clean-team-filter" aria-label="Filtrar tarefas por pessoa"><button data-action="ops:team-filter:all" aria-pressed="${!person}">Todas as pessoas</button>${state().team.map(m=>`<button data-action="ops:team-filter:${esc(m.id)}" aria-pressed="${m.id===teamPerson}">${personAvatar(m,esc)}${esc(m.name)}</button>`).join('')}</div><div class="team-task-summary"><h2>${person?esc(person.name):'Trabalho da equipe'}</h2><span>${tasks.filter(t=>!t.done).length} em aberto <i aria-hidden="true">·</i> ${tasks.filter(t=>t.done).length} concluídas</span></div>`+table(
         ["TAREFA", "PROJETO", "RESPONSÁVEL", "PRAZO", "SITUAÇÃO", ""],
-        state().tasks.map((t) => [
-          esc(t.name),
+        tasks.map((t) => [
+          `<strong class="team-task-name">${esc(t.name)}</strong>`,
           esc(t.project),
-          esc(
-            state().team.find((m) => m.initials === t.assignee)?.name ||
-              "A definir",
-          ),
-          dateLabel(t.date),
-          t.done ? "Concluída" : "Em aberto",
+          (()=>{const member=state().team.find(m=>m.initials===t.assignee);return member?`<span class="team-table-person">${personAvatar(member,esc)}<span>${esc(member.name)}</span></span>`:'<span class="muted">A definir</span>'})(),
+          taskDateBadge(t,new Date(),esc),
+          `<span class="badge ${t.done?'green':'amber'}">${t.done?'Concluída':'Em aberto'}</span>`,
           btn("Abrir", "edit-task:" + t.id, "arrow", "small"),
         ]),
       );
@@ -149,38 +151,39 @@ export function createOperations(ctx) {
         )
         .join(
           "",
-        )}</div><section class="panel ops-table">${content}</section><p class="form-hint">Os cadastros organizam a produção. Para conceder acesso ao sistema, use Configurações → Acessos da equipe.</p>`
+        )}</div><section class="${teamTab==='members'?'clean-team-surface':'panel ops-table'}">${content}</section><p class="form-hint">Os cadastros organizam a produção. Para conceder acesso ao sistema, use Configurações → Acessos da equipe.</p>`
     );
   }
   function equipment() {
-    const total = state().equipment.reduce((n, e) => n + e.value, 0),
-      revenue = state().equipmentLinks.reduce((n, e) => n + e.revenue, 0);
+    inventoryAnimation?.cancel();
+    const groups=inventoryGroups(state().equipment);
+    const category=INVENTORY_CATEGORIES.find(c=>c.id===inventoryFilter);
+    const visible=inventoryFilter==='all'?groups:groups.filter(c=>c.id===inventoryFilter);
+    const items=visible.flatMap(c=>c.items),ids=new Set(items.map(e=>e.id));
+    const total=items.reduce((n,e)=>n+e.value,0);
+    const revenue=state().equipmentLinks.filter(link=>ids.has(link.equipmentId)).reduce((n,link)=>n+link.revenue,0);
+    const filters=[{id:'all',label:'Todos',items:state().equipment},...groups];
+    const label=category?.label||'Todo o inventário';
+    const sections=visible.filter(c=>c.items.length).map(c=>`<section class="inventory-section" data-inventory-section="${c.id}" data-equipment-category="${c.id}" aria-labelledby="inventory-title-${c.id}"><header class="inventory-section-heading"><div><span class="inventory-section-symbol">${inventoryVector(c.id)}</span><div><h2 id="inventory-title-${c.id}">${c.label}<span>${c.items.length}</span></h2><p>${c.hint}</p></div></div>${canEdit()?btn('Adicionar','ops:new:equipment:'+c.id,'plus','small'):''}</header><div class="ops-equipment-grid">${c.items.map(e=>equipmentCard(e,equipmentMetrics(state(),e),{esc,money,btn,canEdit})).join('')}</div></section>`).join('');
     return (
       heading(
-        "Equipamentos",
-        "Seu inventário e o retorno de cada diária.",
+        "Inventário",
+        "Cada peça no seu lugar. Encontre o que vai para o próximo set.",
         canEdit() ? btn("Novo equipamento", "ops:new:equipment") : "",
       ) +
+      `<div class="inventory-browser"><div class="inventory-browser-heading"><strong>Explore por categoria</strong><span>Selecione para ver só os itens desse grupo.</span></div><div class="inventory-filters" role="group" aria-label="Categorias do inventário">${filters.map(c=>`<button type="button" class="inventory-filter" data-action="ops:inventory-filter:${c.id}" data-inventory-filter="${c.id}" data-equipment-category="${c.id}" aria-pressed="${inventoryFilter===c.id}" aria-controls="inventory-results" aria-label="${c.label}: ${c.items.length} ${c.items.length===1?'item':'itens'}"><span class="inventory-filter-art">${inventoryVector(c.id)}<span class="inventory-filter-count">${c.items.length}</span></span><span class="inventory-filter-label">${c.label}</span><span class="inventory-filter-selected" aria-hidden="true">${icon('check')}</span></button>`).join('')}</div></div>`+
+      `<div id="inventory-results"><div class="inventory-selection-summary" role="status" aria-live="polite" aria-atomic="true"><span>${label}</span><span>${items.length} ${items.length===1?'item':'itens'}${category?' nesta categoria':' em '+groups.filter(c=>c.items.length).length+' categorias'}</span></div>`+
       metrics([
-        ["Investimento", money(total)],
+        [category?'Investimento da categoria':'Investimento total', money(total), 'Valor de compra dos itens exibidos', 'value-accent'],
         [
           "Receita atribuída",
           money(revenue),
           "Registros de utilização, não lançamentos de caixa",
+          revenue>0?'value-positive':'',
         ],
-        ["Inventário", state().equipment.length + " itens"],
+        ["Itens exibidos", items.length + (items.length===1?' item':' itens'),category?'Somente '+category.label.toLowerCase():'Todas as categorias'],
       ]) +
-      `<div class="ops-equipment-grid">${
-        state()
-          .equipment.map((e) => {
-            const m = equipmentMetrics(state(), e);
-            return `<article class="panel ops-equipment"><div class="ops-equipment-top"><span class="tool-icon">${icon("camera")}</span><span class="badge">${esc(e.category)}</span></div><h2>${esc(e.name)}</h2><div class="ops-equipment-numbers"><div><small>Compra</small><strong>${money(e.value)}</strong></div><div><small>Custo / diária</small><strong>${money(m.dailyCost)}</strong></div></div><div class="mini-progress"><span style="width:${Math.min(100, m.recovered)}%"></span></div><p class="form-hint">${m.recovered.toFixed(1)}% recuperado · ${money(m.revenue)} atribuídos</p><p class="muted">${m.days} diárias usadas · ${e.life} de vida útil estimada</p><div class="ops-actions">${btn("Utilização", "ops:equipment:" + e.id, "calendar", "small")}${canEdit() ? btn("Editar", "ops:edit:equipment:" + e.id, "settings", "small") : ""}</div></article>`;
-          })
-          .join("") ||
-        blank(
-          "Cadastre seu primeiro equipamento para acompanhar a amortização.",
-        )
-      }</div>`
+      `<div class="inventory-sections">${sections||`<section class="inventory-empty" data-equipment-category="${category?.id||'all'}"><span>${inventoryVector(category?.id||'all')}</span><h2>${category?'Nenhum item em '+category.label.toLowerCase():'Seu kit começa aqui'}</h2><p>${category?'Cadastre o primeiro item desta categoria ou volte para todo o inventário.':'Cadastre seu primeiro equipamento para acompanhar uso e investimento.'}</p><div>${canEdit()?btn('Adicionar item','ops:new:equipment:'+(category?.id||'camera'),'plus',''):''}${category?btn('Ver todos','ops:inventory-filter:all','grid','text'):''}</div></section>`}</div></div>`
     );
   }
   function projectDetail(id, tab = "overview") {
@@ -330,16 +333,17 @@ export function createOperations(ctx) {
         btn("Novo custo", "ops:finance:cost", "plus", "");
       content =
         metrics([
-          ["Recebido", money(m.received)],
-          ["Custos pagos", money(m.spent)],
-          ["Resultado de caixa", money(m.profit)],
+          ["Recebido", money(m.received), "Entradas confirmadas", m.received>0?'value-positive':''],
+          ["Custos pagos", money(m.spent), "Saídas confirmadas", m.spent>0?'value-negative':''],
+          ["Resultado de caixa", money(m.profit), m.profit>0?'Caixa positivo':m.profit<0?'Caixa negativo':'Sem movimentação líquida', m.profit>0?'value-positive':m.profit<0?'value-negative':''],
           [
             "Margem realizada",
-            m.received ? m.margin.toFixed(1) + "%" : "—",
+            m.received ? m.margin.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + "%" : "—",
             "Resultado ÷ recebido",
+            m.received && m.margin!==0 ? m.margin>0?'value-positive':'value-negative' : '',
           ],
         ]) +
-        `<p class="form-hint">Margem de caixa: considera somente valores recebidos e custos pagos. Horas e uso dos equipamentos são estimativas separadas.</p><h3 class="ops-subtitle">Receitas</h3>` +
+        `<section class="clean-payment-summary" aria-label="Recebimento do contrato">${progressRing(m.received,Number(p.value),'Contrato recebido')}<div><h3>Recebimento do contrato</h3><p><span class="value-positive">${money(m.received)} recebido</span> de ${money(p.value)} contratado.</p><small>${p.value>0 ? money(Math.max(0,p.value-m.received))+' ainda não recebido.' : 'Defina o valor contratado para acompanhar o percentual.'}</small></div></section><p class="form-hint">Margem de caixa: considera somente valores recebidos e custos pagos. Horas e uso dos equipamentos são estimativas separadas.</p><h3 class="ops-subtitle">Receitas</h3>` +
         table(
           ["DESCRIÇÃO", "VALOR", "SITUAÇÃO", "DATA", ""],
           state()
@@ -367,37 +371,30 @@ export function createOperations(ctx) {
         );
     }
     if (tab === "overview") {
-      const paymentPercent = p.value
-        ? Math.round((m.received / p.value) * 100)
-        : 0;
       const resource = (symbol, name, description = "") =>
         `<div class="project-resource-row"><span>${icon(symbol)}</span><div>${esc(name)}${description ? `<small>${esc(description)}</small>` : ""}</div></div>`;
       content = `<section class="panel project-progress-panel"><div class="project-progress-heading"><h2>Da ideia à entrega</h2>${canEdit() ? btn("Editar projeto", "edit-project:" + id, "settings", "small") : ""}</div><div class="project-progress-value"><div class="project-progress-track"><span style="width:${p.progress}%"></span></div><span>${["Pré-produção", "Captação", "Em edição", "Finalizado"][p.stage]} · ${p.progress}%</span></div></section>
-      <div class="project-overview-grid"><section class="panel project-finance-panel"><h2>${icon("wallet")}Financeiro do projeto</h2><div class="project-finance-main"><div class="ring-wrap"><svg viewBox="0 0 140 140" role="img" aria-label="${paymentPercent}% do contrato recebido"><circle class="ring-bg" cx="70" cy="70" r="57" fill="none" stroke-width="8"/><circle class="ring-fill" cx="70" cy="70" r="57" fill="none" stroke-width="8" style="stroke-dashoffset:${358 * (1 - Math.min(100, paymentPercent) / 100)}"/></svg><div class="ring-text"><strong>${paymentPercent}%</strong></div></div><div><small>Valor contratado</small><strong>${money(p.value)}</strong></div></div><div class="project-finance-rows"><div><span>Recebido</span><strong>${money(m.received)}</strong></div><div><span>Custos pagos</span><strong>${money(m.spent)}</strong></div><div><span>Contrato ainda não recebido</span><strong>${money(Math.max(0, p.value - m.received))}</strong></div><div><span>Resultado de caixa</span><strong>${money(m.profit)}</strong></div></div>${btn("Ver financeiro do projeto", "ops:tab:finance", "arrow", "")}<p class="form-hint">Caixa considera somente receitas recebidas e custos pagos.</p></section>
+      <div class="project-overview-grid"><section class="panel project-finance-panel"><h2>${icon("wallet")}Financeiro do projeto</h2><div class="project-finance-main">${progressRing(m.received,Number(p.value),'Contrato recebido')}<div><small>Valor contratado</small><strong>${money(p.value)}</strong></div></div><div class="project-finance-rows"><div><span>Recebido</span><strong class="${m.received>0 ? 'value-positive' : ''}">${money(m.received)}</strong></div><div><span>Custos pagos</span><strong class="${m.spent>0 ? 'value-negative' : ''}">${money(m.spent)}</strong></div><div><span>Contrato ainda não recebido</span><strong>${money(Math.max(0, p.value - m.received))}</strong></div><div><span>Resultado de caixa</span><strong class="${m.profit>0 ? 'value-positive' : m.profit<0 ? 'value-negative' : ''}">${money(m.profit)}</strong></div></div>${btn("Ver financeiro do projeto", "ops:tab:finance", "arrow", "")}<p class="form-hint">Caixa considera somente receitas recebidas e custos pagos.</p></section>
       <div class="project-side-stack"><section class="panel"><h2>${icon("calendar")}Datas importantes</h2>${p.captureDates.map((date, i) => `<div class="project-date-row"><span>Captação · diária ${i + 1}</span><strong>${dateLabel(date)}</strong></div>`).join("")}<div class="project-date-row"><span>Entrega</span><strong>${dateLabel(p.date)}</strong></div><div class="project-date-row"><span>Tarefas concluídas</span><strong>${tasks.filter((t) => t.done).length} de ${tasks.length}</strong></div></section><section class="panel"><h2>${icon("clock")}Tempo dedicado</h2><p class="project-hours-total">${m.hours.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}<span class="muted"> h</span></p>${btn("Ver lançamentos", "ops:tab:hours", "arrow", "small")}</section></div>
-      <section class="panel"><h2>${icon("users")}Equipe do projeto</h2><div class="project-resources">${
+      <section class="panel project-resource-panel" aria-label="Recursos do projeto"><div class="project-resource-group"><h2>${icon("users")}Equipe do projeto</h2><div class="project-resources">${
         p.team
           .map((initial) => {
             const person = state().team.find((m) => m.initials === initial);
-            return resource(
-              "users",
-              person?.name || initial,
-              person?.role || "",
-            );
+            return person?`<div class="project-resource-row">${personAvatar(person,esc,'clean-resource-avatar')}<div>${esc(person.name)}<small>${esc(person.role||'')}</small></div></div>`:resource('users',initial);
           })
           .join("") ||
         '<p class="muted">Equipe a definir. Vincule pessoas ao editar o projeto.</p>'
-      }</div></section>
-      <section class="panel"><h2>${icon("camera")}Equipamentos</h2><div class="project-resources">${
+      }</div></div>
+      <div class="project-resource-group"><h2>${icon("camera")}Equipamentos</h2><div class="project-resources">${
         p.equipmentIds
           .map((eid) => {
             const equipment = state().equipment.find((e) => e.id === eid);
             return equipment
-              ? resource("camera", equipment.name, equipment.category)
+              ? resource(equipmentCategory(equipment.category), equipment.name, equipment.category)
               : "";
           })
-          .join("") || '<p class="muted">Nenhum equipamento vinculado.</p>'
-      }</div></section>
+          .join("") || '<p class="muted">Nenhum equipamento vinculado. Adicione os recursos usados nesta produção ao editar o projeto.</p>'
+      }</div>${canEdit() ? btn('Vincular equipamentos','edit-project:'+id,'plus','small') : ''}</div></section>
       <section class="panel project-brief"><h2>${icon("file")}Briefing & direção</h2><p class="ops-prose">${esc(p.note || "Adicione o briefing ao editar o projeto.").replace(/\n/g, "<br>")}</p>${
         canEdit()
           ? `<div class="project-stage-actions">${selectField(
@@ -415,7 +412,9 @@ export function createOperations(ctx) {
       }</section></div>`;
       cta = "";
     }
-    return `<div class="project-workspace"><a href="#projects" class="project-back">${icon("arrow")}Voltar aos projetos</a><header class="project-workspace-heading"><span class="project-workspace-mark">${esc((p.client || p.name).slice(0, 1))}</span><div><h1>${esc(p.name)}</h1><p><span class="badge blue">${["Pré-produção", "Captação", "Em edição", "Finalizado"][p.stage]}</span><span>${esc(p.client || "Cliente a definir")}</span><span>·</span><span>${esc(p.type)}</span><span>·</span><span>${dateLabel(p.date)}</span></p></div></header><div class="tabs ops-project-tabs">${[
+    const client=clientForProject(state(),p),logo=safeLocalImage(client?.logo);
+    const clientAction=canEdit()?btn(client?(logo?'Alterar imagem do cliente':'Adicionar imagem do cliente'):'Vincular cliente',client?'edit-client:'+client.id:'edit-project:'+p.id,'image','small'):'';
+    return `<div class="project-workspace"><a href="#projects" class="project-back">${icon("arrow")}Voltar aos projetos</a><header class="project-workspace-heading"><span class="project-workspace-mark">${logo?`<img src="${logo}" width="64" height="64" alt="Logo de ${esc(p.client)}">`:esc((p.client || p.name).slice(0, 1))}</span><div><h1>${esc(p.name)}</h1><p><span class="badge blue">${["Pré-produção", "Captação", "Em edição", "Finalizado"][p.stage]}</span><span>${esc(p.client || "Cliente a definir")}</span><span>·</span><span>${esc(p.type)}</span><span>·</span><span>${dateLabel(p.date)}</span></p></div></header><div class="tabs ops-project-tabs">${[
       ["overview", "Visão geral"],
       ["tasks", "Tarefas"],
       ["deliveries", "Entregas"],
@@ -430,7 +429,7 @@ export function createOperations(ctx) {
       )
       .join(
         "",
-      )}</div><div class="project-workspace-content">${canEdit() && cta ? `<div class="ops-project-context">${cta}</div>` : ""}${content}</div></div>`;
+      )}</div>${clientAction?`<div class="project-client-actions">${clientAction}<span>Logo e capa compartilhadas com Conexões.</span></div>`:''}<div class="project-workspace-content">${canEdit() && cta ? `<div class="ops-project-context">${cta}</div>` : ""}${content}</div></div>`;
   }
   function useEquipment(id) {
     const equipment = state().equipment.find((e) => e.id === id);
@@ -490,6 +489,7 @@ export function createOperations(ctx) {
       row = state()[key]?.find((x) => x.id === id) || {};
     let fields = "",
       title = "",
+      savedEquipmentId = '',
       after = () => render();
     const name = (label = "Nome *") =>
       field(
@@ -511,20 +511,17 @@ export function createOperations(ctx) {
       );
     if (kind === "equipment") {
       title = "Equipamento";
+      const categoryLabels=INVENTORY_CATEGORIES.map(c=>c.label);
+      const selectedCategory=row.category||INVENTORY_CATEGORIES.find(c=>c.id===(context||inventoryFilter))?.label||'Câmeras';
+      if(!categoryLabels.includes(selectedCategory))categoryLabels.push(selectedCategory);
+      after=()=>{if(inventoryFilter!=='all'){const saved=state().equipment.find(e=>e.id===savedEquipmentId);if(saved){inventoryFilter=equipmentCategory(saved.category);rememberInventoryFilter();}}render();};
       fields =
         name() +
         selectField(
           "Categoria",
           "category",
-          [
-            "Câmeras",
-            "Lentes",
-            "Iluminação",
-            "Áudio",
-            "Estabilização",
-            "Outros",
-          ],
-          row.category || "Câmeras",
+          categoryLabels,
+          selectedCategory,
         ) +
         amount("Valor de compra", "value") +
         field(
@@ -559,7 +556,9 @@ export function createOperations(ctx) {
           details.departmentId || "",
         ) +
         field("E-mail", "email", details.email || "", "email") +
-        field("Telefone", "phone", details.phone || "");
+        field("Telefone", "phone", details.phone || "") +
+        mediaField('Foto da pessoa','photo',row.photo,esc,'photo') +
+        field('Cor da pessoa','color',row.color||'#9bc9ff','color');
     } else if (kind === "supplier") {
       title = "Fornecedor";
       fields =
@@ -696,6 +695,7 @@ export function createOperations(ctx) {
       fields,
       (data) => {
         const next = { ...row, ...data, id: id || uid() };
+        if(kind==='equipment')savedEquipmentId=next.id;
         for (const key of [
           "value",
           "life",
@@ -768,6 +768,18 @@ export function createOperations(ctx) {
   async function handle(action) {
     if (!action.startsWith("ops:")) return false;
     const [, verb, kind, id] = action.split(":");
+    if(verb==='inventory-filter') {
+      if(!validInventoryFilter(kind))return true;
+      inventoryFilter=kind;rememberInventoryFilter();render();
+      document.querySelector(`[data-inventory-filter="${kind}"]`)?.focus({preventScroll:true});
+      const results=document.querySelector('.inventory-sections');
+      if(results?.animate&&document.body.dataset.effects==='on'&&document.body.dataset.inputModality!=='keyboard'&&!matchMedia('(prefers-reduced-motion: reduce)').matches)inventoryAnimation=results.animate([{opacity:.65,transform:'translateY(4px)'},{opacity:1,transform:'translateY(0)'}],{duration:200,easing:'cubic-bezier(.22,1,.36,1)'});
+      return true;
+    }
+    if (verb === 'team-filter') {
+      teamPerson = kind === 'all' || state().team.some(m=>m.id===kind) ? kind : 'all';
+      teamTab = 'tasks'; render(); return true;
+    }
     if (verb === "team") {
       teamTab = kind;
       render();

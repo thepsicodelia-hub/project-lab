@@ -1,5 +1,7 @@
-export function animateSurface(root, { enabled = true, reduced = false } = {}) {
-  if (!enabled || reduced || !root.animate) return;
+import { animateNumbers } from './number-motion.js';
+export function animateSurface(root, { enabled = true, reduced = false, numberMode = 'reveal' } = {}) {
+  if (!enabled || reduced || !root.animate) return ()=>{};
+  const stopNumbers=animateNumbers(root,{mode:numberMode});
   root.querySelectorAll(".orbit-progress,.ring-fill").forEach((circle) => {
     const target = getComputedStyle(circle).strokeDashoffset;
     const length = 2 * Math.PI * Number(circle.getAttribute("r"));
@@ -31,4 +33,5 @@ export function animateSurface(root, { enabled = true, reduced = false } = {}) {
         { duration: 210, delay: i * 25, easing: "cubic-bezier(.22,1,.36,1)" },
       );
     });
+  return stopNumbers;
 }
