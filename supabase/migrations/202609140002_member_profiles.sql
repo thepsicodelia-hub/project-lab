@@ -1,4 +1,4 @@
-create function public.list_workspace_member_profiles(p_workspace uuid)
+create or replace function public.list_workspace_member_profiles(p_workspace uuid)
 returns table(user_id uuid,email text,role text,display_name text,avatar_url text)
 language plpgsql security definer set search_path=''
 as $$
