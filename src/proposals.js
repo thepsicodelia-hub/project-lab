@@ -1,16 +1,17 @@
 import {
   createProposal,
   proposalSchema,
+  proposalTotal,
   replaceProposal,
   proposalToLead,
-  safeWebsite,
-  safeEmail,
   safeImage,
   serializedBytes,
   WORKSPACE_BYTE_LIMIT,
 } from "./proposal-data.js";
 import { readImage } from "./media.js";
+import { proposalEditor } from "./proposal-editor.js";
 import "./proposals.css";
+import "./proposal-workbench.css";
 
 import { proposalDocument } from "./proposal-document.js";
 const photo = (src, alt, cls = "") =>
@@ -28,9 +29,6 @@ export function createProposals(ctx) {
     toast,
     esc,
     btn,
-    field,
-    selectField,
-    textarea,
     canEdit,
     download,
   } = ctx;
@@ -38,19 +36,32 @@ export function createProposals(ctx) {
     mode = "edit",
     dirty = false,
     uploading = false;
-  const imageField = (label, key, value) =>
-    `<label class="field">${label}<input type="file" data-proposal-image="${key}" accept="image/png,image/jpeg,image/webp">${value ? `<span class="proposal-upload-thumb"><img src="${safeImage(value)}" alt="${label}"><button type="button" class="btn small" data-action="proposal-image-remove:${key}">Remover</button></span>` : ""}</label>`;
-  const section = (title, content, open = false) =>
-    `<details class="editor-section" ${open ? "open" : ""}><summary>${title}</summary><div class="form-grid">${content}</div></details>`;
+  let device = "desktop",
+    previewTimer,
+    previewScroll = 0,
+    editorSections = ["capa"],
+    sidebarPosition = 0,
+    saving = false,
+    revision = 0;
   function list() {
     const rows = getState().proposals;
-    return `<div class="toolbar"><p class="muted">Apresentações com a identidade do seu estúdio.</p>${btn("Criar proposta", "proposal-new")}</div>${rows.length ? `<div class="proposal-list">${rows.map((p) => `<article class="panel proposal-item"><div class="proposal-cover-mini" style="--proposal-accent:${p.accent}">${p.coverImage ? photo(p.coverImage, "") : ""}<span>${esc(p.badge)}</span><strong>${esc(p.name)}</strong></div><div class="proposal-item-body"><div><h3>${esc(p.client || "Cliente a definir")}</h3><p>${new Intl.NumberFormat("pt-BR", { style: "currency", currency: p.currency }).format(p.value)} · ${esc(p.status)}</p></div><div class="proposal-item-actions">${btn("Abrir", "proposal-open:" + p.id, "file", "small")}${canEdit() ? btn("Duplicar", "proposal-copy:" + p.id, "plus", "small") : ""}</div></div></article>`).join("")}</div>` : `<div class="empty-state"><h2>Sua próxima proposta começa aqui.</h2><p>Um modelo completo: capa, escopo, investimento e portfólio. Personalize e exporte para apresentar ao cliente.</p>${btn("Usar modelo", "proposal-new")}</div>`}<p class="form-hint">Exporte uma página HTML completa ou use a impressão do navegador para salvar como PDF. Link público e aprovação online ainda não estão configurados.</p>`;
+    return `<div class="toolbar"><p class="muted">Apresentações com a identidade do seu estúdio.</p>${btn("Criar proposta", "proposal-new")}</div>${rows.length ? `<div class="proposal-list">${rows.map((p) => `<article class="panel proposal-item"><div class="proposal-cover-mini" style="--proposal-accent:${p.accent}">${p.coverImage ? photo(p.coverImage, "") : ""}<span>${esc(p.badge)}</span><strong>${esc(p.name)}</strong></div><div class="proposal-item-body"><div><h3>${esc(p.client || "Cliente a definir")}</h3><p>${new Intl.NumberFormat("pt-BR", { style: "currency", currency: p.currency }).format(proposalTotal(p))} · ${esc(p.status)}</p></div><div class="proposal-item-actions">${btn("Abrir", "proposal-open:" + p.id, "file", "small")}${canEdit() ? btn("Duplicar", "proposal-copy:" + p.id, "plus", "small") : ""}</div></div></article>`).join("")}</div>` : `<div class="empty-state"><h2>Sua próxima proposta começa aqui.</h2><p>Um modelo completo: capa, escopo, investimento e portfólio. Personalize e exporte para apresentar ao cliente.</p>${btn("Usar modelo", "proposal-new")}</div>`}<p class="form-hint">Exporte uma página HTML completa ou use a impressão do navegador para salvar como PDF. Link público e aprovação online ainda não estão configurados.</p>`;
   }
   function open(id) {
-    draft = structuredClone(
-      getState().proposals.find((p) => p.id === id) ||
-        createProposal(getState().workspace, getState().currency),
+    clearTimeout(previewTimer);
+    draft = proposalSchema.parse(
+      structuredClone(
+        getState().proposals.find((p) => p.id === id) ||
+          createProposal(
+            getState().workspace,
+            getState().currency,
+            getState().accent,
+          ),
+      ),
     );
+    previewScroll = 0;
+    editorSections = ["capa"];
+    sidebarPosition = 0;
     mode = canEdit() ? "edit" : "preview";
     dirty = false;
     draw();
@@ -60,150 +71,144 @@ export function createProposals(ctx) {
     if (!form || !draft) return;
     for (const input of form.querySelectorAll("[data-p-field]"))
       draft[input.dataset.pField] =
-        input.type === "number" ? Number(input.value) : input.value;
+        input.type === "checkbox"
+          ? input.checked
+          : ["number", "range"].includes(input.type)
+            ? Number(input.value)
+            : input.value;
     draft.deliverables = [...form.querySelectorAll("[data-deliverable]")].map(
       (el) => ({
         name: el.querySelector('[name="deliverable-name"]').value,
         deadline: el.querySelector('[name="deliverable-deadline"]').value,
       }),
     );
+    draft.timeline = [...form.querySelectorAll("[data-timeline]")].map(
+      (el) => ({
+        title: el.querySelector('[name="timeline-title"]').value,
+        description: el.querySelector('[name="timeline-description"]').value,
+      }),
+    );
     draft.investment = [...form.querySelectorAll("[data-investment]")].map(
       (el) => ({
         title: el.querySelector('[name="investment-title"]').value,
         description: el.querySelector('[name="investment-description"]').value,
+        amount: Number(el.querySelector('[name="investment-amount"]').value),
       }),
     );
+    if (draft.calculateTotal) draft.value = proposalTotal(draft);
   }
-  const f = (label, key, type = "text", extra = "") =>
-    field(label, key, draft[key], type, false, extra).replace(
-      `<input name="${key}"`,
-      `<input data-p-field="${key}" name="${key}"`,
-    );
-  const t = (label, key) =>
-    textarea(label, key, draft[key]).replace(
-      `<textarea name="${key}"`,
-      `<textarea data-p-field="${key}" name="${key}"`,
-    );
-  const s = (label, key, values) =>
-    selectField(label, key, values, draft[key]).replace(
-      `<select name="${key}"`,
-      `<select data-p-field="${key}" name="${key}"`,
-    );
+  function syncControls() {
+    const form = document.getElementById("proposal-form");
+    if (!form) return;
+    for (const input of form.querySelectorAll('input[type="range"]')) {
+      form.querySelector(`[data-range-output="${input.name}"]`).textContent =
+        input.value + input.dataset.suffix;
+    }
+    const total = document.getElementById("pe-total");
+    if (total)
+      total.textContent = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: draft.currency,
+      }).format(proposalTotal(draft));
+    const value = form.querySelector('[name="value"]');
+    if (value) {
+      value.readOnly = draft.calculateTotal;
+      if (draft.calculateTotal) value.value = draft.value;
+    }
+    const color = document.getElementById("pe-color-value");
+    if (color) color.textContent = draft.accent;
+    for (const swatch of form.querySelectorAll(".pe-swatch")) {
+      const selected =
+        swatch.dataset.action === "proposal-color:" + draft.accent;
+      swatch.classList.toggle("active", selected);
+      swatch.setAttribute("aria-pressed", String(selected));
+    }
+  }
+  function jumpPreview(id) {
+    const frame = document.getElementById("proposal-preview");
+    const target = frame?.contentDocument?.getElementById(id);
+    if (!target) return;
+    target.scrollIntoView({
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+      block: "start",
+    });
+    document.querySelectorAll(".pe-document-nav button").forEach((button) => {
+      button.classList.toggle(
+        "active",
+        button.dataset.action === "proposal-jump:" + id,
+      );
+    });
+  }
   function draw() {
+    clearTimeout(previewTimer);
     const previousForm = document.getElementById("proposal-form");
     const expanded = previousForm
       ? [...previousForm.querySelectorAll("details[open]")].map(
-          (el) => el.querySelector("summary").textContent,
+          (el) => el.dataset.section,
         )
-      : null;
-    const previousScroll = document.getElementById("modal")?.scrollTop || 0;
-    const disabled = canEdit() ? "" : "disabled";
-    let editor =
-      section(
-        "Capa e identidade",
-        f("Nome da proposta *", "name", "text", 'required maxlength="150"') +
-          f("Cliente", "client") +
-          f("Chamada", "badge") +
-          f("Subtítulo", "subtitle") +
-          f("Cor de destaque", "accent", "color") +
-          f(
-            "Escala do texto",
-            "textScale",
-            "number",
-            'min="0.8" max="1.2" step="0.05"',
-          ) +
-          imageField("Logo da capa", "coverLogo", draft.coverLogo) +
-          imageField("Imagem de capa", "coverImage", draft.coverImage),
-        true,
-      ) +
-      section(
-        "Contato e escopo",
-        f("E-mail do cliente", "email", "email") +
-          f("Telefone do cliente", "phone") +
-          t("Objetivo do projeto", "objective") +
-          t("Escopo de produção", "scope") +
-          f("Equipe prevista", "team") +
-          f(
-            "Diárias de captação",
-            "days",
-            "number",
-            'min="0" max="1000" step="1"',
-          ),
-      ) +
-      section(
-        "Entregáveis",
-        `<div class="full editor-repeater">${draft.deliverables.map((d, i) => `<div data-deliverable class="editor-row">${field("Entrega", "deliverable-name", d.name)}${field("Prazo / formato", "deliverable-deadline", d.deadline)}<button class="btn small" type="button" data-action="proposal-remove-deliverable:${i}" aria-label="Remover entrega ${i + 1}">×</button></div>`).join("")}${btn("Adicionar entrega", "proposal-add-deliverable", "plus", "small")}</div>`,
-      ) +
-      section(
-        "Investimento e condições",
-        f(
-          "Valor total",
-          "value",
-          "number",
-          'min="0" step="0.01" max="10000000000"',
-        ) +
-          s("Moeda", "currency", ["BRL", "USD", "EUR"]) +
-          `<div class="full editor-repeater">${draft.investment.map((d, i) => `<div data-investment class="editor-row investment-row">${field("Coluna", "investment-title", d.title)}${textarea("O que está incluído", "investment-description", d.description)}<button type="button" class="btn small" data-action="proposal-remove-investment:${i}" aria-label="Remover coluna ${i + 1}">×</button></div>`).join("")}${btn("Adicionar coluna", "proposal-add-investment", "plus", "small")}</div>` +
-          t("Pagamento", "payment") +
-          t("Termos e condições", "terms"),
-      ) +
-      section(
-        "Estúdio, clientes e portfólio",
-        imageField("Logo do estúdio", "studioLogo", draft.studioLogo) +
-          f(
-            "Altura dos logos (px)",
-            "logoSize",
-            "number",
-            'min="20" max="120"',
-          ) +
-          t("Sobre o estúdio", "about") +
-          f("E-mail comercial", "commercialEmail", "email") +
-          f("Site do estúdio", "website") +
-          `<label class="field full">Logos de clientes (${draft.clientLogos.length}/6)<input type="file" data-proposal-gallery="clientLogos" accept="image/png,image/jpeg,image/webp" multiple></label><div class="full editor-gallery">${draft.clientLogos.map((v, i) => `<div>${photo(v, `Logo ${i + 1}`)}${btn("Remover", "proposal-remove-clientLogos:" + i, "x", "small")}</div>`).join("")}</div><label class="field full">Imagens do portfólio (${draft.portfolio.length}/5)<input type="file" data-proposal-gallery="portfolio" accept="image/png,image/jpeg,image/webp" multiple></label><div class="full editor-gallery">${draft.portfolio.map((v, i) => `<div>${photo(v, `Portfólio ${i + 1}`)}${btn("Remover", "proposal-remove-portfolio:" + i, "x", "small")}</div>`).join("")}</div>`,
-      ) +
-      section(
-        "Acompanhamento",
-        s("Status (controle interno)", "status", [
-          "Rascunho",
-          "Enviada",
-          "Aprovada",
-          "Recusada",
-        ]),
-      );
+      : editorSections;
+    editorSections = expanded;
+    const sidebarScroll = previousForm
+      ? document.querySelector(".pe-sidebar")?.scrollTop || 0
+      : sidebarPosition;
+    sidebarPosition = sidebarScroll;
+    const focusAction = document.activeElement?.dataset?.action;
+    const oldFrame = document.getElementById("proposal-preview");
+    previewScroll = oldFrame?.contentWindow?.scrollY || previewScroll;
     openModal(
       "Proposta comercial",
-      `<div class="proposal-toolbar"><div class="segmented"><button type="button" data-action="proposal-mode-edit" class="${mode === "edit" ? "active" : ""}" ${disabled}>Configurar</button><button type="button" data-action="proposal-mode-preview" class="${mode === "preview" ? "active" : ""}">Visualizar</button></div><div class="proposal-item-actions">${btn("Exportar HTML", "proposal-export", "download", "small")}${btn("Imprimir / PDF", "proposal-print", "file", "small")}${canEdit() ? btn("Salvar proposta", "proposal-save", "check") : ""}</div></div><div class="proposal-editor ${mode === "preview" ? "preview-only" : ""}">${mode === "edit" ? `<form id="proposal-form" class="proposal-fields">${editor}<p class="form-hint">Imagens compactadas no navegador. O estúdio tem limite de 1 MB de dados nesta versão gratuita.</p></form>` : ""}<div class="proposal-preview"><div class="preview-caption">PRÉVIA DA APRESENTAÇÃO <span id="proposal-draft-state">${dirty ? "Alterações não salvas" : "Rascunho"}</span></div><iframe id="proposal-preview" title="Prévia da proposta" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe></div></div><div class="proposal-bottom">${canEdit() ? btn(draft.leadId ? "Abrir oportunidade" : "Criar oportunidade", "proposal-lead", "trend", "small") : ""}${getState().proposals.some((p) => p.id === draft.id) && canEdit() ? btn("Excluir proposta", "proposal-delete", "x", "small danger") : ""}</div>`,
+      proposalEditor(draft, {
+        esc,
+        mode,
+        dirty,
+        device,
+        editable: canEdit(),
+        saved: getState().proposals.some((p) => p.id === draft.id),
+        linked: ctx.localOnly ? false : draft.leadId ? "existing" : "new",
+      }),
       true,
     );
-    updatePreview();
     const form = document.getElementById("proposal-form");
     if (form) {
       if (expanded)
-        form
-          .querySelectorAll("details")
-          .forEach(
-            (el) =>
-              (el.open = expanded.includes(
-                el.querySelector("summary").textContent,
-              )),
-          );
-      document.getElementById("modal").scrollTop = previousScroll;
+        form.querySelectorAll("details").forEach((el) => {
+          el.open = expanded.includes(el.dataset.section);
+        });
+      const sidebar = document.querySelector(".pe-sidebar");
+      sidebar.scrollTop = sidebarScroll;
+      // Let initial toggle events settle before responding to intentional section changes.
+      requestAnimationFrame(() => {
+        if (!form.isConnected) return;
+        form.querySelectorAll("details").forEach((details) => {
+          details.ontoggle = () => {
+            if (details.open && details.dataset.section !== "interno")
+              jumpPreview(details.dataset.section);
+          };
+        });
+      });
       form.onsubmit = (e) => e.preventDefault();
-      let previewTimer;
       form.oninput = (e) => {
         if (e.target.type === "file") return;
         dirty = true;
+        revision++;
         collect();
+        syncControls();
+        const status = document.getElementById("proposal-draft-state");
+        if (status) status.textContent = "Alterações não salvas";
         clearTimeout(previewTimer);
-        previewTimer = setTimeout(updatePreview, 160);
+        previewTimer = setTimeout(updatePreview, 180);
       };
       form.onchange = async (e) => {
         const key =
           e.target.dataset.proposalImage || e.target.dataset.proposalGallery;
-        if (!key) return;
+        if (!key || uploading) return;
         const files = [...e.target.files];
         if (!files.length) return;
         uploading = true;
+        const status = document.getElementById("proposal-draft-state");
+        if (status) status.textContent = "Otimizando imagem…";
         try {
           collect();
           const limit = key === "clientLogos" ? 6 : 5;
@@ -216,7 +221,7 @@ export function createProposals(ctx) {
             );
           const images = await Promise.all(
             files.map((file) =>
-              readImage(file, key === "clientLogos" ? 25000 : 65000),
+              readImage(file, key === "clientLogos" ? 25000 : 85000),
             ),
           );
           if (!form.isConnected || !document.getElementById("modal").open)
@@ -233,38 +238,72 @@ export function createProposals(ctx) {
             );
           draft = candidate;
           dirty = true;
+          revision++;
           draw();
-          toast("Imagem adicionada à prévia. Salve a proposta para guardar.");
+          toast("Imagem pronta. Salve a proposta para guardar.");
         } catch (error) {
           toast(error.message);
+          e.target.value = "";
         } finally {
           uploading = false;
+          if (status?.isConnected)
+            status.textContent = dirty
+              ? "Alterações não salvas"
+              : "Prévia atualizada";
         }
       };
     }
+    updatePreview();
+    if (focusAction)
+      document
+        .querySelector(`[data-action="${CSS.escape(focusAction)}"]`)
+        ?.focus({ preventScroll: true });
   }
   function updatePreview() {
     const frame = document.getElementById("proposal-preview");
     if (!frame || !draft) return;
+    const status = document.getElementById("proposal-draft-state");
     try {
+      const scroll = frame.dataset.loaded
+        ? frame.contentWindow.scrollY
+        : previewScroll;
+      frame.onload = async () => {
+        await frame.contentDocument?.fonts?.ready;
+        if (!frame.isConnected) return;
+        frame.contentWindow.scrollTo({ top: scroll, behavior: "instant" });
+        frame.dataset.loaded = "true";
+        previewScroll = scroll;
+      };
       frame.srcdoc = proposalDocument(
         { ...draft, name: draft.name || "Nome da proposta" },
         getState().workspace,
-      );
+      ).replace("<head>", '<head><base href="about:srcdoc">');
     } catch {
-      /* Keep last valid preview while a numeric input is temporarily empty. */
+      if (status)
+        status.textContent = "Revise os campos para atualizar a prévia";
+      return;
     }
-    const status = document.getElementById("proposal-draft-state");
     if (status)
       status.textContent = dirty
         ? "Alterações não salvas"
         : "Prévia atualizada";
   }
   async function persist() {
-    if (!canEdit() || uploading) return false;
-    collect();
-    if (document.getElementById("proposal-form")?.reportValidity() === false)
+    if (!canEdit() || saving) return false;
+    if (uploading) {
+      toast("Aguarde a imagem terminar de carregar.");
       return false;
+    }
+    collect();
+    if (!validateDraft()) return false;
+    const savedRevision = revision;
+    const previous = getState().proposals;
+    saving = true;
+    const saveButton = document.querySelector('[data-action="proposal-save"]');
+    if (saveButton) {
+      saveButton.disabled = true;
+      saveButton.querySelector("span").textContent = "Salvando…";
+    }
     try {
       const candidate = proposalSchema.parse({
         ...draft,
@@ -278,16 +317,43 @@ export function createProposals(ctx) {
           "A proposta ultrapassa o limite de 1 MB do estúdio. Reduza as imagens.",
         );
       getState().proposals = replaceProposal(getState(), candidate).proposals;
-      if (!(await save())) return false;
-      draft = structuredClone(candidate);
-      dirty = false;
+      if (!(await save())) {
+        getState().proposals = previous;
+        return false;
+      }
+      if (revision === savedRevision) {
+        draft = structuredClone(candidate);
+        dirty = false;
+      }
       render();
       toast("Proposta salva.");
       return true;
     } catch (error) {
+      getState().proposals = previous;
       toast(error.issues?.[0]?.message || error.message);
       return false;
+    } finally {
+      saving = false;
+      if (saveButton?.isConnected) {
+        saveButton.disabled = false;
+        saveButton.querySelector("span").textContent = "Salvar proposta";
+      }
     }
+  }
+  function validateDraft() {
+    const invalid = document.querySelector("#proposal-form :invalid");
+    if (invalid) {
+      const details = invalid.closest("details");
+      if (details) details.open = true;
+      invalid.reportValidity();
+      return false;
+    }
+    const result = proposalSchema.safeParse(draft);
+    if (!result.success) {
+      toast(result.error.issues[0].message);
+      return false;
+    }
+    return true;
   }
   async function handle(action) {
     if (!action.startsWith("proposal-")) return false;
@@ -300,7 +366,12 @@ export function createProposals(ctx) {
       "proposal-print",
       "proposal-mode-preview",
     ];
-    if (!canEdit() && !readOnly.includes(action)) {
+    if (
+      !canEdit() &&
+      !readOnly.includes(action) &&
+      !action.startsWith("proposal-device-") &&
+      !action.startsWith("proposal-jump:")
+    ) {
       toast("Seu perfil permite apenas consultar.");
       return true;
     }
@@ -314,7 +385,7 @@ export function createProposals(ctx) {
       );
       if (source) {
         draft = {
-          ...structuredClone(source),
+          ...proposalSchema.parse(structuredClone(source)),
           id: crypto.randomUUID(),
           name: `${source.name.slice(0, 140)} (cópia)`,
           status: "Rascunho",
@@ -329,6 +400,32 @@ export function createProposals(ctx) {
     }
     if (!draft) return true;
     collect();
+    if (action.startsWith("proposal-jump:")) {
+      jumpPreview(action.slice(14));
+      return true;
+    }
+    if (action.startsWith("proposal-device-")) {
+      device = action.endsWith("mobile") ? "mobile" : "desktop";
+      document.querySelector(".proposal-workbench").dataset.device = device;
+      document.querySelectorAll(".pe-device button").forEach((button) => {
+        const active = button.dataset.action === action;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
+      return true;
+    }
+    if (
+      action.startsWith("proposal-color:") &&
+      /^#[\da-f]{6}$/i.test(action.slice(15))
+    ) {
+      draft.accent = action.slice(15);
+      document.querySelector('[name="accent"]').value = draft.accent;
+      dirty = true;
+      revision++;
+      syncControls();
+      updatePreview();
+      return true;
+    }
     if (action === "proposal-save") {
       if (await persist()) draw();
       return true;
@@ -339,6 +436,11 @@ export function createProposals(ctx) {
       return true;
     }
     if (action === "proposal-export") {
+      if (uploading) {
+        toast("Aguarde a imagem terminar de carregar.");
+        return true;
+      }
+      if (!validateDraft()) return true;
       download(
         `${draft.name.replace(/[^\p{L}\p{N} -]/gu, "").slice(0, 80) || "proposta"}.html`,
         proposalDocument(draft, getState().workspace),
@@ -348,14 +450,29 @@ export function createProposals(ctx) {
       return true;
     }
     if (action === "proposal-print") {
+      if (uploading) {
+        toast("Aguarde a imagem terminar de carregar.");
+        return true;
+      }
+      if (!validateDraft()) return true;
       const frame = document.createElement("iframe");
       frame.className = "print-frame";
       frame.title = "Impressão da proposta";
       frame.setAttribute("sandbox", "allow-same-origin allow-modals");
       document.body.append(frame);
-      frame.onload = () => {
+      frame.onload = async () => {
+        await frame.contentDocument.fonts.ready;
+        await Promise.all(
+          [...frame.contentDocument.images].map((image) =>
+            image.decode().catch(() => {}),
+          ),
+        );
         frame.contentWindow.focus();
         frame.contentWindow.print();
+        if (ctx.localOnly)
+          toast(
+            "Escolha ‘Salvar como PDF’ na impressão. Se a janela não abrir aqui, use esta página no Chrome ou Safari.",
+          );
       };
       frame.srcdoc = proposalDocument(draft, getState().workspace);
       setTimeout(() => frame.remove(), 120000);
@@ -406,9 +523,21 @@ export function createProposals(ctx) {
     if (action === "proposal-add-deliverable" && draft.deliverables.length < 40)
       draft.deliverables.push({ name: "", deadline: "" });
     if (action === "proposal-add-investment" && draft.investment.length < 8)
-      draft.investment.push({ title: "", description: "" });
+      draft.investment.push({ title: "", description: "", amount: 0 });
+    if (action === "proposal-add-timeline" && draft.timeline.length < 8)
+      draft.timeline.push({ title: "", description: "" });
+    const move = action.match(
+      /^proposal-move-(deliverable|investment|timeline):(\d+):(-?1)$/,
+    );
+    if (move) {
+      const rows = draft[move[1] === "deliverable" ? "deliverables" : move[1]];
+      const from = Number(move[2]),
+        to = from + Number(move[3]);
+      if (from >= 0 && from < rows.length && to >= 0 && to < rows.length)
+        [rows[from], rows[to]] = [rows[to], rows[from]];
+    }
     const remove = action.match(
-      /^proposal-remove-(deliverable|investment|clientLogos|portfolio):(\d+)$/,
+      /^proposal-remove-(deliverable|investment|timeline|clientLogos|portfolio):(\d+)$/,
     );
     if (remove)
       draft[remove[1] === "deliverable" ? "deliverables" : remove[1]].splice(
@@ -418,7 +547,17 @@ export function createProposals(ctx) {
     if (action.startsWith("proposal-image-remove:"))
       draft[action.slice(22)] = "";
     dirty = true;
+    revision++;
+    if (draft.calculateTotal) draft.value = proposalTotal(draft);
     draw();
+    const added = action.match(
+      /^proposal-add-(deliverable|investment|timeline)$/,
+    );
+    if (added)
+      [...document.querySelectorAll(`[data-${added[1]}]`)]
+        .at(-1)
+        ?.querySelector("input")
+        ?.focus();
     return true;
   }
   return {
