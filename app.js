@@ -10,6 +10,8 @@ import { WorkspaceRepository } from "./src/repository.js";
 import { createAuth } from "./src/auth.js";
 import { supabase, friendlyError } from "./src/supabase.js";
 import { createProposals } from "./src/proposals.js";
+import { openBudgetCalculator } from "./src/budget-calculator.js";
+import "./src/budget-calculator.css";
 import { createOperations } from "./src/operations.js";
 import { createCreativeTools } from "./src/creative-tools.js";
 import "@fontsource-variable/geist";
@@ -1428,65 +1430,7 @@ function openTool(id) {
   }
   if (creativeModule.open(id)) return;
   if (id !== "calculator") return;
-  openModal(
-    "Calculadora de orçamento",
-    '<div class="form-grid">' +
-      field(
-        "Serviços de produção",
-        "services",
-        6000,
-        "number",
-        false,
-        'min="0" step="0.01"',
-      ) +
-      field(
-        "Equipamentos e locação",
-        "rental",
-        1800,
-        "number",
-        false,
-        'min="0" step="0.01"',
-      ) +
-      field(
-        "Impostos (%)",
-        "tax",
-        6,
-        "number",
-        false,
-        'min="0" max="99" step="0.1"',
-      ) +
-      field(
-        "Margem sobre o preço final (%)",
-        "margin",
-        30,
-        "number",
-        false,
-        'min="0" max="99" step="0.1"',
-      ) +
-      '</div><p class="form-hint">Impostos e margem devem somar menos de 100%. Esta é uma simulação, sem criar lançamentos financeiros.</p><div id="calc-result" aria-live="polite"></div>',
-  );
-  modal
-    .querySelectorAll("input")
-    .forEach((el) => el.addEventListener("input", calculate));
-  calculate();
-}
-function calculate() {
-  let vals = Object.fromEntries(
-    [...modal.querySelectorAll("input")].map((e) => [e.name, Number(e.value)]),
-  );
-  let cost = vals.services + vals.rental,
-    denom = 1 - (vals.tax + vals.margin) / 100;
-  if (
-    denom <= 0 ||
-    Object.values(vals).some((v) => !Number.isFinite(v) || v < 0)
-  ) {
-    document.getElementById("calc-result").innerHTML =
-      '<p class="form-hint" role="alert">Revise os valores: impostos + margem devem ser menores que 100%.</p>';
-    return;
-  }
-  let total = cost / denom;
-  document.getElementById("calc-result").innerHTML =
-    `<div class="detail-total"><small>Preço sugerido</small><strong>${money(total)}</strong></div><div class="detail-grid"><div><small>Custo de produção</small><strong>${money(cost)}</strong></div><div><small>Impostos estimados</small><strong>${money((total * vals.tax) / 100)}</strong></div><div><small>Resultado estimado</small><strong class="positive">${money((total * vals.margin) / 100)}</strong></div><div><small>Margem sobre o preço</small><strong>${vals.margin}%</strong></div></div>`;
+  openBudgetCalculator({ openModal, money, currency: state.currency || "BRL", icon, toast });
 }
 
 function download(name, content, type = "application/json") {
