@@ -128,11 +128,18 @@ export function createProposals(ctx) {
     const frame = document.getElementById("proposal-preview");
     const target = frame?.contentDocument?.getElementById(id);
     if (!target) return;
-    target.scrollIntoView({
+    // scrollIntoView also scrolls the iframe's ancestors, shifting the whole dialog.
+    const preview = frame.contentWindow;
+    const margin =
+      parseFloat(preview.getComputedStyle(target).scrollMarginTop) || 0;
+    preview.scrollTo({
+      top: Math.max(
+        0,
+        target.getBoundingClientRect().top + preview.scrollY - margin,
+      ),
       behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
         ? "instant"
         : "smooth",
-      block: "start",
     });
     document.querySelectorAll(".pe-document-nav button").forEach((button) => {
       button.classList.toggle(

@@ -29,7 +29,7 @@ body.light .proposal-workbench {
   max-width: 96vw;
   max-height: 96dvh;
   padding: 0;
-  overflow: hidden;
+  overflow: clip;
   background: var(--panel);
   color: var(--pe-text);
   border: 1px solid var(--pe-border);
@@ -181,6 +181,7 @@ body.light .proposal-workbench {
   min-height: 430px;
 }
 .pe-sidebar {
+  position: relative;
   overflow: auto;
   overscroll-behavior: contain;
   border-right: 1px solid var(--pe-border);
@@ -380,6 +381,7 @@ body.light .proposal-workbench {
   outline-offset: 3px;
 }
 .pe-button.pe-icon-only {
+  position: relative;
   width: 32px;
   min-height: 32px;
   padding: 7px;
@@ -631,6 +633,7 @@ body.light .proposal-workbench {
   background: var(--pe-bg);
 }
 .pe-gallery-add {
+  position: relative;
   width: 75px;
   height: 65px;
   border: 1px dashed color-mix(in srgb, var(--pe-border) 60%, var(--pe-muted));
