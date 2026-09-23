@@ -1317,7 +1317,7 @@ function newProject(id) {
       selectField(
         "Tipo de produção",
         "type",
-        ["Institucional", "Campanha", "Evento", "Social", "Documentário"],
+        ["Institucional", "Campanha", "Evento", "Social", "Documentário", "Videoclipe", "Comercial de TV", "Casamento", "Reels / Instagram", "Conteúdo para YouTube", "Podcast / Videocast", "Transmissão ao vivo", "Curta-metragem", "Longa-metragem", "Vídeo de produto", "Vídeo imobiliário", "Curso / Videoaula", "Edição / Pós-produção", "Motion design / Animação", "VFX / Efeitos visuais", "Fotografia", "Outros"],
         p?.type || "Institucional",
       ) +
       textarea(
@@ -2259,9 +2259,9 @@ function financialForm(isCost, id, projectId = "") {
         ? selectField(
             "Categoria",
             "category",
-            ["Produção", "Locação", "Fixo", "Logística", "Outros"],
+            ["Produção", "Editor freelancer", "Motion designer freelancer", "VFX / Efeitos visuais", "Colorização", "Som / Mixagem", "Equipe freelancer", "Locação", "Fixo", "Logística", "Outros"],
             item?.category || "Produção",
-          )
+          ) + '<p class="form-hint full">Contratou um editor? Selecione Editor freelancer e informe o nome do profissional na descrição. Vincule a um projeto ou escolha Sem projeto para uma despesa geral do estúdio.</p>'
         : field("Cliente", "client", item?.client || "")) +
       field(
         "Valor total (R$) *",
