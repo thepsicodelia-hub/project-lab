@@ -1338,14 +1338,15 @@ function newProject(id) {
       ) +
       (!p
         ? selectField(
-            "Lançar receita a receber",
+            "Como deseja registrar este projeto?",
             "createIncome",
             [
-              ["no", "Não lançar agora"],
-              ["yes", "Criar receita pendente"],
+              ["no", "Só criar o projeto"],
+              ["yes", "Também registrar o valor a receber"],
             ],
             "no",
-          ) + field("Vencimento da receita", "incomeDate", "", "date")
+            true,
+          ) + field("Quando o cliente deve pagar?", "incomeDate", "", "date", true, 'aria-describedby="project-income-help"') + '<p id="project-income-help" class="form-hint full" aria-live="polite"></p>'
         : '<p class="form-hint full">Alterar o valor contratado não modifica receitas já lançadas. Edite cada receita no financeiro.</p>') +
       '<h3 class="form-section">3 · Recursos</h3>' +
       checks(
@@ -1361,6 +1362,8 @@ function newProject(id) {
         p?.equipmentIds || [],
       ),
     (d) => {
+      if (!p && d.createIncome === 'yes' && (!d.incomeDate || !(Number(d.value) > 0)))
+        throw new Error('Para registrar o valor a receber, informe um valor contratado maior que zero e a data prevista de pagamento.');
       const client = state.clients.find((c) => c.id === d.clientId);
       const dates = parseCaptureDates(d.captureDates);
       const project = {
@@ -1431,6 +1434,24 @@ function newProject(id) {
     p ? "Salvar alterações" : "Criar projeto",
   );
   modal.classList.add("wide");
+  if (!p) {
+    const choice = modal.querySelector('[name="createIncome"]');
+    const date = modal.querySelector('[name="incomeDate"]');
+    const help = modal.querySelector('#project-income-help');
+    if (choice && date && help) {
+      const updateIncomeFields = () => {
+        const enabled = choice.value === 'yes';
+        date.closest('label').style.display = enabled ? '' : 'none';
+        date.disabled = !enabled;
+        date.required = enabled;
+        help.textContent = enabled
+          ? 'É a previsão de pagamento do cliente, não a entrega do projeto. O valor contratado ficará em Caixa → Receitas como pendente. Isso não envia cobrança nem marca o valor como recebido.'
+          : 'O projeto será criado sem lançamento no financeiro. Você pode adicionar o valor a receber depois, em Caixa → Nova receita.';
+      };
+      choice.addEventListener('change', updateIncomeFields);
+      updateIncomeFields();
+    }
+  }
 }
 function projectDetail(id) {
   operationsModule.projectDetail(id);
