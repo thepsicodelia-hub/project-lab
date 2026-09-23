@@ -412,6 +412,7 @@ export function createOperations(ctx) {
       }</section></div>`;
       cta = "";
     }
+    if (canEdit()) cta += btn('Excluir produção', 'delete-production:' + id, 'trash', 'small danger');
     const client=clientForProject(state(),p),logo=safeLocalImage(client?.logo);
     const clientAction=canEdit()?btn(client?(logo?'Alterar imagem do cliente':'Adicionar imagem do cliente'):'Vincular cliente',client?'edit-client:'+client.id:'edit-project:'+p.id,'image','small'):'';
     return `<div class="project-workspace"><a href="#projects" class="project-back">${icon("arrow")}Voltar aos projetos</a><header class="project-workspace-heading"><span class="project-workspace-mark">${logo?`<img src="${logo}" width="64" height="64" alt="Logo de ${esc(p.client)}">`:esc((p.client || p.name).slice(0, 1))}</span><div><h1>${esc(p.name)}</h1><p><span class="badge blue">${["Pré-produção", "Captação", "Em edição", "Finalizado"][p.stage]}</span><span>${esc(p.client || "Cliente a definir")}</span><span>·</span><span>${esc(p.type)}</span><span>·</span><span>${dateLabel(p.date)}</span></p></div></header><div class="tabs ops-project-tabs">${[

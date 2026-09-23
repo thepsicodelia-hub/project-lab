@@ -8,6 +8,7 @@ import {
 } from "./src/data.js";
 import { WorkspaceRepository } from "./src/repository.js";
 import { parseCaptureDates } from './src/project-dates.js';
+import { deleteProduction } from './src/delete-production.js';
 import { createAuth } from "./src/auth.js";
 import { supabase, friendlyError } from "./src/supabase.js";
 import { createProposals } from "./src/proposals.js";
@@ -1555,6 +1556,16 @@ function bindForms() {
     };
 }
 async function action(a) {
+  if (a.startsWith('delete-production:') || a.startsWith('confirm-delete-production:')) {
+    if (!canEdit() || saving || saveConflict) return;
+    const id = a.split(':')[1];
+    const project = state.projects.find(row => row.id === id);
+    if (!project) return;
+    if (a.startsWith('delete-production:')) return openModal('Excluir produção?', `<p>Excluir <strong>${esc(project.name)}</strong>?</p><p class="form-hint">O briefing, as entregas, os materiais, as horas e os compromissos automáticos desta produção serão removidos. Receitas, despesas, tarefas, compromissos manuais e histórico de utilização dos equipamentos serão preservados. Esta ação não pode ser desfeita.</p><div class="form-actions">${btn('Cancelar','close','x','')}${btn('Excluir produção','confirm-delete-production:'+id,'trash','danger')}</div>`);
+    deleteProduction(state, id);
+    if (await save()) { closeModal(); location.hash = 'projects'; render(); toast('Produção excluída. Histórico financeiro preservado.'); }
+    return;
+  }
   if (a.startsWith('delete-event:') || a.startsWith('confirm-delete-event:')) {
     if (!canEdit()) return;
     const id = a.split(':')[1];
