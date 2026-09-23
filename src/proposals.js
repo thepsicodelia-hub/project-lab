@@ -45,7 +45,7 @@ export function createProposals(ctx) {
     revision = 0;
   function list() {
     const rows = getState().proposals;
-    return `<div class="toolbar"><p class="muted">Apresentações com a identidade do seu estúdio.</p>${btn("Criar proposta", "proposal-new")}</div>${rows.length ? `<div class="proposal-list">${rows.map((p) => `<article class="panel proposal-item"><div class="proposal-cover-mini" style="--proposal-accent:${p.accent}">${p.coverImage ? photo(p.coverImage, "") : ""}<span>${esc(p.badge)}</span><strong>${esc(p.name)}</strong></div><div class="proposal-item-body"><div><h3>${esc(p.client || "Cliente a definir")}</h3><p>${new Intl.NumberFormat("pt-BR", { style: "currency", currency: p.currency }).format(proposalTotal(p))} · ${esc(p.status)}</p></div><div class="proposal-item-actions">${btn("Abrir", "proposal-open:" + p.id, "file", "small")}${canEdit() ? btn("Duplicar", "proposal-copy:" + p.id, "plus", "small") : ""}</div></div></article>`).join("")}</div>` : `<div class="empty-state"><h2>Sua próxima proposta começa aqui.</h2><p>Um modelo completo: capa, escopo, investimento e portfólio. Personalize e exporte para apresentar ao cliente.</p>${btn("Usar modelo", "proposal-new")}</div>`}<p class="form-hint">Exporte uma página HTML completa ou use a impressão do navegador para salvar como PDF. Link público e aprovação online ainda não estão configurados.</p>`;
+    return `<div class="toolbar"><p class="muted">Apresentações com a identidade do seu estúdio.</p>${btn("Criar proposta", "proposal-new")}</div>${rows.length ? `<div class="proposal-list">${rows.map((p) => `<article class="panel proposal-item"><div class="proposal-cover-mini" style="--proposal-accent:${p.accent}">${p.coverImage ? photo(p.coverImage, "") : ""}<span>${esc(p.badge)}</span><strong>${esc(p.name)}</strong></div><div class="proposal-item-body"><div><h3>${esc(p.client || "Cliente a definir")}</h3><p>${new Intl.NumberFormat("pt-BR", { style: "currency", currency: p.currency }).format(proposalTotal(p))} · ${esc(p.status)}</p></div><div class="proposal-item-actions">${btn("Abrir", "proposal-open:" + p.id, "file", "small")}${canEdit() ? btn("Duplicar", "proposal-copy:" + p.id, "plus", "small") : ""}</div></div></article>`).join("")}</div>` : `<div class="empty-state"><h2>Sua próxima proposta começa aqui.</h2><p>Um modelo completo: capa, escopo, investimento e portfólio. Personalize e exporte para apresentar ao cliente.</p>${btn("Usar modelo", "proposal-new")}</div>`}<p class="form-hint">Baixe a proposta em PDF com o visual da apresentação ou exporte a página HTML completa. Link público e aprovação online ainda não estão configurados.</p>`;
   }
   function open(id) {
     clearTimeout(previewTimer);
@@ -462,27 +462,16 @@ export function createProposals(ctx) {
         return true;
       }
       if (!validateDraft()) return true;
-      const frame = document.createElement("iframe");
-      frame.className = "print-frame";
-      frame.title = "Impressão da proposta";
-      frame.setAttribute("sandbox", "allow-same-origin allow-modals");
-      document.body.append(frame);
-      frame.onload = async () => {
-        await frame.contentDocument.fonts.ready;
-        await Promise.all(
-          [...frame.contentDocument.images].map((image) =>
-            image.decode().catch(() => {}),
-          ),
-        );
-        frame.contentWindow.focus();
-        frame.contentWindow.print();
-        if (ctx.localOnly)
-          toast(
-            "Escolha ‘Salvar como PDF’ na impressão. Se a janela não abrir aqui, use esta página no Chrome ou Safari.",
-          );
-      };
-      frame.srcdoc = proposalDocument(draft, getState().workspace);
-      setTimeout(() => frame.remove(), 120000);
+      if (document.body.dataset.exportingPdf) return true;
+      document.body.dataset.exportingPdf = 'true';
+      toast('Preparando o PDF. Aguarde o download.');
+      try {
+        const { downloadProposalPDF } = await import('./proposal-pdf.js');
+        await downloadProposalPDF(proposalDocument(draft, getState().workspace), draft.name.replace(/[^\p{L}\p{N} -]/gu, '').slice(0,80) || 'proposta');
+        toast('PDF pronto para baixar.');
+      } catch (error) {
+        toast('Não foi possível gerar o PDF. ' + error.message);
+      } finally { delete document.body.dataset.exportingPdf; }
       return true;
     }
     if (action === "proposal-lead") {

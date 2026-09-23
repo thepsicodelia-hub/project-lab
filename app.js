@@ -7,6 +7,7 @@ import {
   outstanding,
 } from "./src/data.js";
 import { WorkspaceRepository } from "./src/repository.js";
+import { parseCaptureDates } from './src/project-dates.js';
 import { createAuth } from "./src/auth.js";
 import { supabase, friendlyError } from "./src/supabase.js";
 import { createProposals } from "./src/proposals.js";
@@ -1233,6 +1234,19 @@ function form(title, fields, onSubmit, button = "Salvar", afterSave) {
   );
   document.getElementById("entry-form").onsubmit = async (e) => {
     e.preventDefault();
+    const showError = message => {
+      let error = e.target.querySelector('[data-form-error]');
+      if (!error) {
+        error = document.createElement('p');
+        error.dataset.formError = '';
+        error.setAttribute('role', 'alert');
+        error.tabIndex = -1;
+        error.style.cssText = 'color:var(--danger,#ff8994);padding:12px 0;';
+        e.target.querySelector('.form-actions').before(error);
+      }
+      error.textContent = message;
+      error.focus();
+    };
     if(Number(e.target.dataset.mediaPending)>0)return toast('Aguarde a imagem ficar pronta antes de salvar.');
     if (saving || saveConflict)
       return toast("Carregue a versão atual antes de continuar.");
@@ -1251,11 +1265,15 @@ function form(title, fields, onSubmit, button = "Salvar", afterSave) {
       onSubmit(data);
     } catch (error) {
       state = structuredClone(acknowledged);
+      showError(friendlyError(error));
       toast(friendlyError(error));
       return;
     }
     const saved = await save();
-    if (!saved) return;
+    if (!saved) {
+      showError('Não foi possível salvar. Confira sua conexão. Se houver conflito, feche este formulário e carregue a versão atual no aviso do estúdio.');
+      return;
+    }
     closeModal();
     render();
     toast(
@@ -1303,7 +1321,7 @@ function newProject(id) {
         p?.type || "Institucional",
       ) +
       textarea(
-        "Datas de captação (uma por linha, AAAA-MM-DD)",
+        "Datas de captação (uma por linha, DD/MM/AAAA ou AAAA-MM-DD)",
         "captureDates",
         p?.captureDates?.join("\n") || "",
       ) +
@@ -1343,14 +1361,7 @@ function newProject(id) {
       ),
     (d) => {
       const client = state.clients.find((c) => c.id === d.clientId);
-      const dates = d.captureDates.split(/\s+/).filter(Boolean);
-      dates.forEach((date) => {
-        if (
-          !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-          Number.isNaN(new Date(date + "T12:00:00").valueOf())
-        )
-          throw new Error("Revise as datas de captação.");
-      });
+      const dates = parseCaptureDates(d.captureDates);
       const project = {
         id: p?.id || crypto.randomUUID(),
         name: d.name,
@@ -1544,6 +1555,18 @@ function bindForms() {
     };
 }
 async function action(a) {
+  if (a.startsWith('delete-event:') || a.startsWith('confirm-delete-event:')) {
+    if (!canEdit()) return;
+    const id = a.split(':')[1];
+    const event = state.events.find(item => item.id === id);
+    if (!event || id.startsWith('auto-')) return;
+    if (a.startsWith('delete-event:')) {
+      return openModal('Excluir compromisso?', `<p>${esc(event.name)} será removido da agenda compartilhada do estúdio.</p><div class="form-actions">${btn('Cancelar','edit-event:'+id,'x','')}${btn('Excluir compromisso','confirm-delete-event:'+id,'trash','')}</div>`);
+    }
+    state.events = state.events.filter(item => item.id !== id);
+    if (await save()) { closeModal(); render(); toast('Compromisso excluído.'); }
+    return;
+  }
   if (appMode === "locked" || saving) return;
   if (await extendedAction(a)) return;
   if (
@@ -2627,7 +2650,7 @@ function eventEditor(id) {
         "type",
         ["Reunião", "Captação", "Entrega", "Pagamento"],
         event?.type || "Reunião",
-      )+eventColorField(event?.color,event?.type),
+      )+eventColorField(event?.color,event?.type)+(event && !event.id.startsWith('auto-') ? `<div class="field full">${btn('Excluir compromisso','delete-event:'+event.id,'trash','')}</div>` : ''),
     (data) => {
       const next = {
         ...data,
