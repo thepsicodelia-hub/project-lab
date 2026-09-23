@@ -412,6 +412,7 @@ export function createOperations(ctx) {
       }</section></div>`;
       cta = "";
     }
+    if (tab === 'overview' || tab === 'finance') content = `<section class="panel"><h2>Previsão do projeto</h2><div class="detail-grid"><div><small>Valor contratado</small><strong>${money(p.value)}</strong></div><div><small>Custos registrados (pagos + pendentes)</small><strong>${money(m.plannedCosts)}</strong></div><div><small>Sobra prevista</small><strong class="${m.forecast < 0 ? 'value-negative' : 'value-positive'}">${money(m.forecast)}</strong></div></div><p class="form-hint">Contrato menos custos registrados, incluindo aluguéis. É uma previsão, não saldo disponível. Despesas ainda não cadastradas, impostos e estimativas de horas não estão incluídos.</p></section>` + content;
     if (canEdit()) cta += btn('Excluir produção', 'delete-production:' + id, 'trash', 'small danger');
     const client=clientForProject(state(),p),logo=safeLocalImage(client?.logo);
     const clientAction=canEdit()?btn(client?(logo?'Alterar imagem do cliente':'Adicionar imagem do cliente'):'Vincular cliente',client?'edit-client:'+client.id:'edit-project:'+p.id,'image','small'):'';
@@ -524,9 +525,11 @@ export function createOperations(ctx) {
           categoryLabels,
           selectedCategory,
         ) +
+        selectField('Este equipamento é', 'ownership', [['owned','Próprio — comprado pelo estúdio'],['rented','Alugado — contratado por diária']], row.ownership || 'owned', true) +
+        field('Diária de aluguel (R$)', 'rentalRate', row.rentalRate || 0, 'number', true, 'min="0.01" max="10000000000" step="0.01"') +
         amount("Valor de compra", "value") +
         field(
-          "Vida útil (diárias)",
+          "Em quantas diárias pretende distribuir o custo da compra?",
           "life",
           row.life || 120,
           "number",
@@ -534,13 +537,13 @@ export function createOperations(ctx) {
           'min="1" max="10000000" step="1" required',
         ) +
         field(
-          "Usos anteriores ao cadastro",
+          "Quantas diárias já usou antes de cadastrar?",
           "uses",
           row.uses || 0,
           "number",
           false,
           'min="0" max="10000000" step="1" required',
-        );
+        ) + '<p class="form-hint full" data-equipment-help>Para itens próprios, estimamos o custo de uso dividindo o valor de compra pelas diárias previstas. Ex.: R$ 1.200 ÷ 120 diárias = R$ 10 por diária. Isso não significa dinheiro recebido nem compra quitada.</p>';
     } else if (kind === "member") {
       title = "Pessoa";
       const details = state().memberDetails.find((d) => d.id === id) || {};
@@ -699,6 +702,7 @@ export function createOperations(ctx) {
         if(kind==='equipment')savedEquipmentId=next.id;
         for (const key of [
           "value",
+          "rentalRate",
           "life",
           "uses",
           "hours",
@@ -707,6 +711,10 @@ export function createOperations(ctx) {
           "revenue",
         ])
           if (key in next) next[key] = Number(next[key]);
+        if (kind === 'equipment' && next.ownership === 'rented') {
+          if (!(next.rentalRate > 0)) throw new Error('Informe a diária de aluguel.');
+          next.value = 0; next.life = 120; next.uses = 0;
+        }
         if (
           ["delivery", "material"].includes(kind) &&
           next.url &&
@@ -765,6 +773,23 @@ export function createOperations(ctx) {
       "Salvar",
       after,
     );
+    if (kind === 'equipment') {
+      const root = document.getElementById('entry-form');
+      const choice = root?.querySelector('[name="ownership"]');
+      if (choice) {
+        const update = () => {
+          const rented = choice.value === 'rented';
+          for (const name of ['value','life','uses','rentalRate']) {
+            const input = root.querySelector(`[name="${name}"]`);
+            const visible = name === 'rentalRate' ? rented : !rented;
+            input.disabled = !visible; input.closest('label').style.display = visible ? '' : 'none';
+            if (name === 'rentalRate') input.required = rented;
+          }
+          root.querySelector('[data-equipment-help]').textContent = rented ? 'Cadastre o preço de referência da locadora. Ao selecionar este item em um projeto, o sistema registra diária × dias como custo pendente. Confirme o preço com a locadora e ajuste o lançamento se necessário.' : 'Distribui o valor da compra pelas diárias previstas. Ex.: R$ 1.200 ÷ 120 = R$ 10 por diária. Usos anteriores são diárias já realizadas. Isso estima o custo de uso, não comprova que a compra se pagou.';
+        };
+        choice.addEventListener('change', update); update();
+      }
+    }
   }
   async function handle(action) {
     if (!action.startsWith("ops:")) return false;

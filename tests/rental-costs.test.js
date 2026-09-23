@@ -1,0 +1,23 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { emptyState, parseState } from '../src/data.js';
+import { addRentalCosts } from '../src/rental-costs.js';
+import { projectMetrics } from '../src/operations-data.js';
+test('rental costs reduce forecast, never cash; repeated project saves do not duplicate costs', () => {
+  let state = emptyState('Teste');
+  state.projects = [{id:'p',name:'Clipe',stage:0,value:2000,equipmentIds:['e'],captureDates:[],rentalDays:2}];
+  state.equipment = [{id:'e',name:'Camera',ownership:'rented',rentalRate:310,value:0,life:120}];
+  state = parseState(state);
+  addRentalCosts(state,state.projects[0],()=> 'rental');
+  addRentalCosts(state,state.projects[0],()=> 'duplicate');
+  assert.equal(state.costs.length,1);
+  assert.equal(state.costs[0].value,620);
+  assert.equal(projectMetrics(state,'p').forecast,1380);
+  assert.equal(projectMetrics(state,'p').spent,0);
+  state.equipment[0].rentalRate=900;
+  state.costs[0].paid=true;
+  addRentalCosts(state,state.projects[0]);
+  assert.equal(state.costs[0].value,620);
+  assert.equal(projectMetrics(state,'p').spent,620);
+  assert.doesNotThrow(()=>parseState(state));
+});

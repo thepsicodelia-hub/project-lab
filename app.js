@@ -9,6 +9,7 @@ import {
 import { WorkspaceRepository } from "./src/repository.js";
 import { parseCaptureDates } from './src/project-dates.js';
 import { deleteProduction } from './src/delete-production.js';
+import { addRentalCosts } from './src/rental-costs.js';
 import { createAuth } from "./src/auth.js";
 import { supabase, friendlyError } from "./src/supabase.js";
 import { createProposals } from "./src/proposals.js";
@@ -1358,9 +1359,9 @@ function newProject(id) {
       checks(
         "Equipamentos",
         "projectEquipment",
-        state.equipment.map((q) => ({ value: q.id, label: q.name })),
+        state.equipment.map((q) => ({ value: q.id, label: q.name + (q.ownership === 'rented' ? ' · Alugado · ' + money(q.rentalRate) + '/dia' : '') })),
         p?.equipmentIds || [],
-      ),
+      ) + field('Diárias de aluguel para os itens selecionados', 'rentalDays', p?.rentalDays || 1, 'number', true, 'min="1" max="10000" step="1" required') + '<p class="form-hint full">Itens alugados criam custos pendentes automaticamente: diária × quantidade de dias. Não contam como pagos. Custos já lançados não são recalculados ou excluídos ao editar o projeto; ajuste cada lançamento no Financeiro para evitar duplicidade.</p>',
     (d) => {
       if (!p && d.createIncome === 'yes' && (!d.incomeDate || !(Number(d.value) > 0)))
         throw new Error('Para registrar o valor a receber, informe um valor contratado maior que zero e a data prevista de pagamento.');
@@ -1379,6 +1380,7 @@ function newProject(id) {
         progress: [15, 40, 75, 100][Number(d.stage)],
         color: p?.color || "",
         captureDates: [...new Set(dates)],
+        rentalDays: Number(d.rentalDays),
         team: [
           ...document.querySelectorAll('[name="projectTeam"]:checked'),
         ].map((e) => e.value),
@@ -1390,6 +1392,7 @@ function newProject(id) {
         state.projects[state.projects.findIndex((item) => item.id === p.id)] =
           project;
       else state.projects.unshift(project);
+      addRentalCosts(state, project);
       // Preserve chosen colors when dates of generated events are edited.
       const previousEvents=state.events.filter(e=>e.projectId===project.id&&e.id.startsWith('auto-'));
       state.events = state.events.filter(
@@ -2291,7 +2294,7 @@ function financialForm(isCost, id, projectId = "") {
         ? selectField(
             "Categoria",
             "category",
-            ["Produção", "Editor freelancer", "Motion designer freelancer", "VFX / Efeitos visuais", "Colorização", "Som / Mixagem", "Equipe freelancer", "Locação", "Fixo", "Logística", "Outros"],
+            ["Produção", "Editor freelancer", "Motion designer freelancer", "VFX / Efeitos visuais", "Colorização", "Som / Mixagem", "Equipe freelancer", "Modelos / Elenco", "Locação de espaço", "Locação", "Fixo", "Logística", "Outros"],
             item?.category || "Produção",
           ) + '<p class="form-hint full">Contratou um editor? Selecione Editor freelancer e informe o nome do profissional na descrição. Vincule a um projeto ou escolha Sem projeto para uma despesa geral do estúdio.</p>'
         : field("Cliente", "client", item?.client || "")) +
@@ -2352,6 +2355,7 @@ function financialForm(isCost, id, projectId = "") {
           "O valor parcial deve ser maior que zero e menor que o total.",
         );
       const row = {
+        ...(item || {}),
         id: item?.id || crypto.randomUUID(),
         name: d.name,
         projectId: d.projectId,

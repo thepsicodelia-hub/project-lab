@@ -183,6 +183,8 @@ test("operation costs, actual margin and equipment amortization remain separate"
   });
   assert.deepEqual(projectMetrics(state, "p"), {
     received: 1000,
+    plannedCosts: 400,
+    forecast: -400,
     spent: 300,
     profit: 700,
     margin: 70,

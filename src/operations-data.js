@@ -86,7 +86,7 @@ export function equipmentMetrics(state, equipment) {
   );
   const days = equipment.uses + links.reduce((n, x) => n + x.days, 0);
   const revenue = links.reduce((n, x) => n + x.revenue, 0);
-  const dailyCost = equipment.value / equipment.life;
+  const dailyCost = equipment.ownership === 'rented' ? equipment.rentalRate : equipment.value / equipment.life;
   const amortized = Math.min(equipment.value, days * dailyCost);
   return {
     days,
@@ -109,6 +109,8 @@ export function projectMetrics(state, id) {
   const hours = (state.projectHours || []).filter((x) => x.projectId === id);
   return {
     received,
+    plannedCosts: costs.reduce((n, cost) => n + cost.value, 0),
+    forecast: (state.projects.find(project => project.id === id)?.value || 0) - costs.reduce((n, cost) => n + cost.value, 0),
     spent,
     profit: received - spent,
     margin: received ? ((received - spent) / received) * 100 : 0,
