@@ -11,6 +11,8 @@ import { parseCaptureDates } from './src/project-dates.js';
 import { deleteProduction } from './src/delete-production.js';
 import { addRentalCosts } from './src/rental-costs.js';
 import { createAuth } from "./src/auth.js";
+import { createGoogleIntegrations } from './src/google-integrations.js';
+import './src/google-integrations.css';
 import { supabase, friendlyError } from "./src/supabase.js";
 import { createProposals } from "./src/proposals.js";
 import { openBudgetCalculator } from "./src/budget-calculator.js";
@@ -983,6 +985,7 @@ function tasks() {
   );
 }
 function calendar() {
+  if (location.hash === '#calendar/google') return googleIntegrations.calendarPage();
   let y = calendarDate.getFullYear(),
     m = calendarDate.getMonth(),
     offset = new Date(y, m, 1).getDay(),
@@ -993,6 +996,7 @@ function calendar() {
       "Captações, reuniões e entregas. Tudo no seu tempo.",
       btn("Novo compromisso", "new-event"),
     ) +
+    googleIntegrations.calendarTabs() +
     `<div class="toolbar"><div class="calendar-nav"><button class="icon-button" data-action="prev-month" aria-label="Mês anterior" style="transform:rotate(180deg)">${icon("chevron")}</button><strong>${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(calendarDate)}</strong><button class="icon-button" data-action="next-month" aria-label="Próximo mês">${icon("chevron")}</button>${btn("Hoje", "today", "calendar", "small")}</div><span class="muted" style="font-size:11px">${state.events.filter((e) => e.date.startsWith(`${y}-${String(m + 1).padStart(2, "0")}`)).length} compromissos neste mês</span></div><section class="panel calendar-scroller"><div class="calendar-weekdays">${["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].map((s) => `<span>${s}</span>`).join("")}</div><div class="calendar">${Array.from(
       { length: Math.ceil((offset + days) / 7) * 7 },
       (_, i) => {
@@ -1109,6 +1113,7 @@ function settings() {
     `<section class="panel">
     <div class="settings-section"><h2>Seu estúdio</h2><p>Nome compartilhado entre os membros.</p><form id="workspace-form" class="settings-row"><label class="field">Nome do estúdio<input name="workspace" value="${esc(state.workspace)}" maxlength="80" required ${!isOwner() ? "disabled" : ""}></label>${isOwner() ? '<button class="btn primary" type="submit">Salvar nome</button>' : ""}</form></div>
     <div class="settings-section"><h2>Aparência</h2><p>Sua cor acompanha botões, navegação e indicadores. As preferências são compartilhadas com o estúdio.</p><form id="appearance-form"><div class="settings-row"><div class="segmented"><button type="button" data-action="theme-dark" class="${state.theme === "dark" ? "active" : ""}" ${disabled}>Escuro</button><button type="button" data-action="theme-light" class="${state.theme === "light" ? "active" : ""}" ${disabled}>Claro</button></div><label class="field color-control">Cor do estúdio<input type="color" name="accent" value="${state.accent}" ${disabled}></label>${selectField("Moeda de exibição", "currency", ["BRL", "USD", "EUR"], state.currency)}${canEdit() ? '<button class="btn primary" type="submit">Salvar preferências</button>' : ""}</div>${presetMarkup}<p class="form-hint">A moeda altera a exibição; não converte os valores existentes. Cada proposta pode ter sua própria moeda.</p></form></div>
+    ${googleIntegrations.settingsEntry()}
     <div class="settings-section"><h2>Seu painel</h2><p>Escolha quais informações aparecem na visão geral.</p>${btn("Personalizar visão geral", "dashboard-customize", "grid", "")}</div>
     <div class="settings-section"><h2>Backup e restauração</h2><p>${appMode === "online" ? "Os registros são salvos no estúdio online. Exporte uma cópia periódica." : "Os dados desta demonstração são salvos neste navegador. Exporte uma cópia antes de limpar os dados do site."}</p><p class="storage-caption">${(new TextEncoder().encode(JSON.stringify(state)).length / 1024).toFixed(0)} KB de 1.024 KB utilizados</p><div class="settings-row">${btn("Exportar backup", "export", "download", "")}${isOwner() ? btn("Importar backup", "import", "file", "") : ""}${appMode === "demo" ? btn("Restaurar demonstração", "reset", "grid", "") : ""}</div></div>
     <div class="settings-section"><h2>Acessos da equipe</h2><p>Administradores gerenciam convites e backups. Editores alteram o trabalho. Leitores apenas consultam.</p><div class="settings-row">${btn("Gerenciar acessos", "access", "users", "")}${btn("Minha conta", "account", "settings", "")}</div></div>
@@ -1134,6 +1139,7 @@ function render() {
     tools: toolsPage,
     calendar,
     settings,
+    integrations: googleIntegrations.page,
   };
   const parts = location.hash.slice(1).split("/");
   const projectRoute = parts[0] === "project";
@@ -1153,6 +1159,8 @@ function render() {
   renderIcons();
   document.title = `${navItems.find((n) => n[0] === route)?.[1] || "Configurações"} — Project Lab`;
   bindForms();
+  googleIntegrations.bind(content);
+  if (route === 'integrations') { document.getElementById('crumb').textContent = 'Suas integrações'; document.title = 'Integrações — Project Lab'; }
   disposeDistribution = bindDistribution(content);
   content.querySelectorAll('[data-week-step]').forEach(button=>button.onclick=()=>{plannerWeekOffset=button.dataset.weekStep==='today'?0:plannerWeekOffset+Number(button.dataset.weekStep);render();content.querySelector(`[data-week-step="${button.dataset.weekStep}"]`)?.focus({preventScroll:true})});
   for(const id of ['distribution-metric','distribution-group']) {
@@ -1603,6 +1611,7 @@ async function action(a) {
     return;
   }
   if (appMode === "locked" || saving) return;
+  if (await googleIntegrations.handle(a)) return;
   if (await extendedAction(a)) return;
   if (
     (await proposalsModule.handle(a)) ||
@@ -1797,6 +1806,7 @@ window.addEventListener("hashchange", () => {
 
 const auth = createAuth({
   onLock() {
+    googleIntegrations.reset();
     appMode = "locked";
     repository = null;
     workspaceContext = null;
@@ -1812,6 +1822,7 @@ const auth = createAuth({
     document.body.classList.remove("light");
   },
   onDemo() {
+    googleIntegrations.reset();
     repository = null;
     workspaceContext = null;
     appMode = "demo";
@@ -1840,6 +1851,7 @@ const auth = createAuth({
     if (warning) toast(warning);
   },
   async onWorkspace(context) {
+    googleIntegrations.reset();
     const next = new WorkspaceRepository(supabase, context.id);
     const data = await next.load();
     if (!context.isCurrent()) return;
@@ -2740,6 +2752,7 @@ const moduleContext = {
   },
 };
 const proposalsModule = createProposals(moduleContext);
+const googleIntegrations = createGoogleIntegrations(moduleContext);
 const operationsModule = createOperations(moduleContext);
 const creativeModule = createCreativeTools(moduleContext);
 auth.start().catch((error) => toast(friendlyError(error)));

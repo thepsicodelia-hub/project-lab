@@ -265,8 +265,8 @@ export function createOperations(ctx) {
           ]),
       );
     } else if (tab === "materials") {
-      cta = btn("Adicionar material", "ops:new:material");
-      content = table(
+      cta = `<div class="ops-actions">${btn("Adicionar material", "ops:new:material")}${canEdit() ? btn('Adicionar do Google Drive','google:pick:'+id,'file','') : ''}</div>`;
+      content = '<p class="form-hint">Links adicionados ficam visíveis para o estúdio. O conteúdo continua no Drive e só abre para quem já tem permissão do proprietário.</p>' + table(
         ["MATERIAL", "TIPO", "OBSERVAÇÕES", "LINK", ""],
         state()
           .projectMaterials.filter((x) => x.projectId === id)
