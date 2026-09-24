@@ -4,8 +4,8 @@ import { JSDOM } from 'jsdom';
 import { createGoogleIntegrations } from '../src/google-integrations.js';
 
 const esc = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-async function harness({ enabled = true, failure = '', editable = true } = {}) {
-  const dom = new JSDOM('<main></main>', { url: 'https://projectlab.test/#integrations' });
+async function harness({ enabled = true, calendarEnabled = enabled, pathname = '/', failure = '', editable = true } = {}) {
+  const dom = new JSDOM('<main></main>', { url: `https://projectlab.test${pathname}#integrations` });
   globalThis.window = dom.window; globalThis.location = dom.window.location;
   const state = { projects: [{ id: 'p1', name: 'Produção teste' }], projectMaterials: [] };
   const sessions = new Set(), requests = [], toasts = [];
@@ -34,7 +34,7 @@ async function harness({ enabled = true, failure = '', editable = true } = {}) {
   let integration;
   const render = () => { root.innerHTML = location.hash === '#calendar/google' ? integration.calendarPage() : integration.page(); };
   integration = createGoogleIntegrations({ esc, icon: () => '<svg aria-hidden="true"></svg>', render, toast: value => toasts.push(value), getState: () => state, canEdit: () => editable, save: async () => { saved++; return true; }, openModal: (title, html) => { dialog = html; }, closeModal: () => { dialog = ''; } }, {
-    fetchConfig: async () => ({ ok: true, json: async () => ({ enabled, clientId: 'test', appId: 'test', pickerKey: 'restricted-test-key', driveEnabled: enabled, calendarEnabled: enabled }) }),
+    fetchConfig: async () => ({ ok: true, json: async () => ({ enabled, clientId: 'test', appId: 'test', pickerKey: 'restricted-test-key', driveEnabled: enabled, calendarEnabled }) }),
     createClient: () => client, loadScript: async () => {},
   });
   render(); integration.bind(root);
@@ -49,6 +49,18 @@ test('unconfigured integrations remain disabled and never authorize', async () =
   assert.equal(h.requests.length, 0);
   assert.equal(h.client.connected('calendar'), false);
   h.dom.window.close();
+});
+
+test('Calendar review is isolated to its exact URL and respects the master switch', async () => {
+  for (const [pathname, enabled, connects] of [
+    ['/', true, false], ['/google-calendar-review.html', true, true],
+    ['/google-calendar-review.html', false, false], ['/other.html', true, false],
+  ]) {
+    const h = await harness({ pathname, enabled, calendarEnabled: false });
+    await h.integration.handle('google:connect:calendar');
+    assert.equal(h.client.connected('calendar'), connects);
+    h.dom.window.close();
+  }
 });
 
 test('personal calendar is escaped, read-only and never saved to studio state', async () => {
