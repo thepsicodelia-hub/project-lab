@@ -75,7 +75,7 @@ export function createGoogleIntegrations(ctx, dependencies = {}) {
         })
         .then((value) => {
           // Isolated review URL only: normal users remain gated until Google approval.
-          config = { ...value, calendarEnabled: value.calendarEnabled || location.pathname === '/google-calendar-review.html' };
+          config = { ...value, calendarEnabled: value.calendarEnabled || ['/google-calendar-review', '/google-calendar-review.html'].includes(location.pathname) };
           client = makeClient(config);
         })
         .catch(() => {

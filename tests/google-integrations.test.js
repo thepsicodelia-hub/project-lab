@@ -53,7 +53,7 @@ test('unconfigured integrations remain disabled and never authorize', async () =
 
 test('Calendar review is isolated to its exact URL and respects the master switch', async () => {
   for (const [pathname, enabled, connects] of [
-    ['/', true, false], ['/google-calendar-review.html', true, true],
+    ['/', true, false], ['/google-calendar-review.html', true, true], ['/google-calendar-review', true, true],
     ['/google-calendar-review.html', false, false], ['/other.html', true, false],
   ]) {
     const h = await harness({ pathname, enabled, calendarEnabled: false });
