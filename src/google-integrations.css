@@ -118,6 +118,18 @@
   padding: 24px !important;
   min-width: 0;
 }
+.google-integration-page:has(.google-calendar-panel) { max-width: none; }
+.google-month-scroller { overflow-x: auto; margin-top: 24px; border: 1px solid var(--line); border-radius: 16px; }
+.google-month-scroller .calendar-weekdays,
+.google-month-scroller .calendar { min-width: 700px; }
+.google-month-scroller .calendar-day { min-width: 0; min-height: 144px; }
+.google-day-event { display: grid; gap: 4px; min-height: 44px; margin-top: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-hover); color: var(--text); text-decoration: none; overflow-wrap: anywhere; font-size: .875rem; line-height: 1.4; transition: background .18s ease-out; }
+.google-day-event strong { color: var(--blue); font-size: .75rem; }
+.google-day-event small { color: var(--muted); }
+a.google-day-event:hover { background: var(--blue-tint); }
+.google-day-event:focus-visible, .google-month-scroller:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+@media (max-width: 767px) { .google-calendar-panel { padding: 16px !important; } }
+@media (prefers-reduced-motion: reduce) { .google-day-event { transition: none; } }
 .google-calendar-toolbar {
   display: flex;
   align-items: end;

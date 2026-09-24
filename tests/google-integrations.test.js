@@ -67,7 +67,9 @@ test('personal calendar is escaped, read-only and never saved to studio state', 
   const h = await harness();
   location.hash = '#calendar/google';
   await h.integration.handle('google:connect:calendar');
-  assert.equal(h.root.querySelectorAll('.google-event').length, 1);
+  assert.equal(h.root.querySelectorAll('.google-day-event').length, 1);
+  assert.equal(h.root.querySelectorAll('.calendar-weekdays span').length, 7);
+  assert.equal(h.root.querySelectorAll('.calendar-day:not(.empty)').length, new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate());
   assert.match(h.root.textContent, /<img src=x/);
   assert.equal(h.root.querySelector('script, img'), null);
   assert.equal(h.saved, 0);
@@ -75,7 +77,7 @@ test('personal calendar is escaped, read-only and never saved to studio state', 
   await h.integration.handle('google:month:1');
   assert.equal(h.requests.at(-1).params.singleEvents, 'true');
   await h.integration.handle('google:disconnect:calendar');
-  assert.equal(h.root.querySelector('.google-event'), null);
+  assert.equal(h.root.querySelector('.google-day-event'), null);
   assert.doesNotMatch(h.root.textContent, /test@example.com/);
   h.dom.window.close();
 });

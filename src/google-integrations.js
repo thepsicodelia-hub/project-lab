@@ -120,36 +120,35 @@ export function createGoogleIntegrations(ctx, dependencies = {}) {
   function calendarTabs(google = false) {
     return `<nav class="google-calendar-tabs" aria-label="Origem da agenda"><a class="${!google ? "active" : ""}" href="#calendar" ${!google ? 'aria-current="page"' : ""}>Agenda do estúdio</a><a class="${google ? "active" : ""}" href="#calendar/google" ${google ? 'aria-current="page"' : ""}>Minha agenda Google</a></nav>`;
   }
-  function eventRow(event) {
-    const day = new Intl.DateTimeFormat("pt-BR", {
-      day: "2-digit",
-      month: "short",
-    }).format(event.start);
-    let time = event.allDay
-      ? "Dia inteiro"
-      : new Intl.DateTimeFormat("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }).format(event.start);
-    if (+event.end - +event.start > 86400000) {
-      const last = new Date(+event.end - (event.allDay ? 1 : 0));
-      time +=
-        " · até " +
-        new Intl.DateTimeFormat("pt-BR", {
-          day: "2-digit",
-          month: "short",
-        }).format(last);
-    }
-    return `<li class="google-event"><div class="google-event-date"><strong>${esc(day)}</strong><span>${esc(time)}</span></div><div class="google-event-info"><h3>${esc(event.name)}</h3>${event.location ? `<p>${esc(event.location)}</p>` : ""}</div>${event.url ? link(event.url, "Ver no Google") : ""}</li>`;
-  }
   function calendarPage() {
     clearExpired();
     let content;
     if (!isConnected("calendar"))
       content = `<section class="panel google-service"><h2>Seus compromissos, só para você</h2><p>Conecte sua conta para consultar a agenda Google aqui. Seus eventos pessoais não são copiados para o estúdio.</p>${serviceControls("calendar")}</section>`;
     else
-      content = `<section class="panel google-calendar-panel"><div class="google-calendar-toolbar"><label class="field">Calendário<select data-google-calendar ${busy ? "disabled" : ""}>${calendars.map((item) => `<option value="${esc(item.id)}" ${item.id === selectedCalendar ? "selected" : ""}>${esc(item.summaryOverride || item.summary || "Calendário")}</option>`).join("")}</select></label><div class="google-month"><button type="button" class="icon-button" data-action="google:month:-1" aria-label="Mês anterior" ${busy ? "disabled" : ""}>←</button><strong>${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(month)}</strong><button type="button" class="icon-button" data-action="google:month:1" aria-label="Próximo mês" ${busy ? "disabled" : ""}>→</button></div>${button("Atualizar", "refresh", false, Boolean(busy))}</div><p class="google-muted">${esc(email.calendar || "Conta Google conectada")} · Somente leitura · Horários no fuso deste dispositivo</p>${busy ? '<div class="google-loading" role="status">Consultando sua agenda…</div>' : error && !events.length ? '<div class="google-empty"><h3>Consulta não concluída</h3><p>Confira a mensagem acima e tente atualizar novamente.</p></div>' : events.length ? `<ul class="google-events">${events.map(eventRow).join("")}</ul>` : `<div class="google-empty">${icon("calendar")}<h3>${calendars.length ? "Nenhum compromisso neste mês" : "Nenhum calendário disponível"}</h3><p>${calendars.length ? "Escolha outro mês ou calendário para consultar." : "Confira as permissões da conta conectada."}</p></div>`}${nextPage ? button("Mostrar mais compromissos", "more", false, Boolean(busy)) : ""}</section>`;
+      content = `<section class="panel google-calendar-panel"><div class="google-calendar-toolbar"><label class="field">Calendário<select data-google-calendar ${busy ? "disabled" : ""}>${calendars.map((item) => `<option value="${esc(item.id)}" ${item.id === selectedCalendar ? "selected" : ""}>${esc(item.summaryOverride || item.summary || "Calendário")}</option>`).join("")}</select></label><div class="google-month"><button type="button" class="icon-button" data-action="google:month:-1" aria-label="Mês anterior" ${busy ? "disabled" : ""}>←</button><strong>${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(month)}</strong><button type="button" class="icon-button" data-action="google:month:1" aria-label="Próximo mês" ${busy ? "disabled" : ""}>→</button></div>${button("Atualizar", "refresh", false, Boolean(busy))}</div><p class="google-muted">${esc(email.calendar || "Conta Google conectada")} · Somente leitura · Horários no fuso deste dispositivo</p>${busy ? '<div class="google-loading" role="status">Consultando sua agenda…</div>' : error && !events.length ? '<div class="google-empty"><h3>Consulta não concluída</h3><p>Confira a mensagem acima e tente atualizar novamente.</p></div>' : calendars.length ? calendarGrid() : `<div class="google-empty">${icon("calendar")}<h3>${calendars.length ? "Nenhum compromisso neste mês" : "Nenhum calendário disponível"}</h3><p>${calendars.length ? "Escolha outro mês ou calendário para consultar." : "Confira as permissões da conta conectada."}</p></div>`}${nextPage ? button("Mostrar mais compromissos", "more", false, Boolean(busy)) : ""}</section>`;
     return `<div class="page-heading"><div><h1>Agenda</h1><p class="google-muted">Seu estúdio e seus compromissos, sem misturar as permissões.</p></div></div>${calendarTabs(true)}<div class="google-integration-page">${message()}${content}<p class="google-footnote">Mudanças devem ser feitas no Google Agenda. A agenda pessoal não altera o Radar nem os compromissos compartilhados do Project Lab. <a href="#integrations">Gerenciar conexão</a></p></div>`;
+  }
+  function calendarGrid() {
+    const year = month.getFullYear(), m = month.getMonth();
+    const offset = new Date(year, m, 1).getDay();
+    const days = new Date(year, m + 1, 0).getDate();
+    const today = new Date();
+    const fullDate = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'full' });
+    const clock = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `<div class="google-month-scroller" role="region" aria-label="Calendário mensal Google" tabindex="0"><div class="calendar-weekdays">${['DOM','SEG','TER','QUA','QUI','SEX','SÁB'].map(day => `<span>${day}</span>`).join('')}</div><div class="calendar">${Array.from({ length: Math.ceil((offset + days) / 7) * 7 }, (_, i) => {
+      const d = i - offset + 1;
+      if (d < 1 || d > days) return '<div class="calendar-day empty" aria-hidden="true"></div>';
+      const start = new Date(year, m, d), end = new Date(year, m, d + 1);
+      const isToday = start.toDateString() === today.toDateString();
+      const items = events.filter(event => event.start < end && event.end > start);
+      return `<section class="calendar-day ${isToday ? 'today' : ''}" aria-label="${esc(fullDate.format(start))}"><span class="day-number" ${isToday ? 'aria-current="date"' : ''}>${d}</span>${items.map(event => {
+        const time = event.allDay ? 'Dia inteiro' : event.start < start ? 'Continuação' : clock.format(event.start);
+        const label = `${event.name}, ${time}${event.location ? ', ' + event.location : ''}`;
+        const body = `<strong>${esc(time)}</strong><span>${esc(event.name)}</span>${event.location ? `<small>${esc(event.location)}</small>` : ''}`;
+        return event.url ? `<a class="google-day-event" href="${esc(event.url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(label)} — abrir no Google">${body}</a>` : `<div class="google-day-event">${body}</div>`;
+      }).join('')}</section>`;
+    }).join('')}</div></div>${!events.length ? '<p class="google-muted">Nenhum compromisso neste mês.</p>' : ''}`;
   }
   function reset(service) {
     epoch++;
