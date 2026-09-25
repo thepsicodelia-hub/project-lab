@@ -219,7 +219,11 @@ export function createGoogleClient({
               );
             },
           })
-          .requestAccessToken({ prompt: "select_account" });
+          .requestAccessToken({
+            prompt: /^\/google-calendar-review(?:\.html)?$/.test(globalThis.location?.pathname || "")
+              ? "consent select_account"
+              : "select_account",
+          });
       } catch {
         finish(
           new Error(
