@@ -245,16 +245,16 @@ a.google-day-event:hover { background: var(--blue-tint); }
   flex-direction: column;
   gap: 24px;
   border-color: color-mix(in srgb, var(--line) 72%, var(--text) 28%);
-  background: radial-gradient(circle at 96% 0%, color-mix(in srgb, var(--green) 10%, transparent), transparent 52%), var(--panel);
+  background: radial-gradient(circle at 96% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 52%), var(--panel);
   transition: border-color 220ms ease, transform 220ms cubic-bezier(.22,1,.36,1);
 }
 .google-drive-service:hover {
-  border-color: color-mix(in srgb, var(--green) 38%, var(--line));
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--line));
   transform: translateY(-2px);
 }
 .google-drive-service .google-service-icon {
-  background: color-mix(in srgb, var(--green) 16%, var(--panel));
-  color: var(--green);
+  background: var(--blue-tint);
+  color: var(--blue);
 }
 .google-drive-service .google-service-heading p {
   overflow-wrap: anywhere;
@@ -285,9 +285,9 @@ a.google-day-event:hover { background: var(--blue-tint); }
   place-items: center;
   flex: 0 0 30px;
   height: 30px;
-  border: 1px solid color-mix(in srgb, var(--green) 38%, var(--line));
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
   border-radius: 50%;
-  color: var(--green);
+  color: var(--blue);
   font: 600 .75rem/1 var(--font);
 }
 .google-drive-service > .google-drive-assurance {
@@ -308,22 +308,22 @@ a.google-day-event:hover { background: var(--blue-tint); }
   transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 .google-drive-control .btn.primary {
-  background: var(--text);
-  border-color: var(--text);
-  color: var(--bg);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 12%, transparent);
+  background: var(--control);
+  border-color: var(--control);
+  color: var(--control-ink);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 .google-drive-control .btn.primary:hover {
-  background: var(--green);
-  border-color: var(--green);
-  color: var(--bg);
+  background: color-mix(in srgb, var(--control) 90%, var(--control-ink));
+  border-color: var(--control);
+  color: var(--control-ink);
 }
 .google-drive-control .btn:not(.primary) {
   color: var(--muted);
 }
 .google-drive-control .btn:hover:not(:disabled) { transform: translateY(-2px); }
 .google-drive-control .btn:active:not(:disabled) { transform: scale(.98); }
-.google-drive-control .btn:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.google-drive-control .btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
 .google-drive-service .google-files { margin-top: 0; padding-top: 24px; }
 .google-drive-service .google-file { min-height: 64px; }
 @media (max-width: 767px) {
