@@ -265,19 +265,9 @@ export function createOperations(ctx) {
           ]),
       );
     } else if (tab === "materials") {
-      cta = `<div class="ops-actions">${btn("Adicionar material", "ops:new:material")}${canEdit() ? btn('Adicionar do Google Drive','google:pick:'+id,'file','') : ''}</div>`;
-      content = '<p class="form-hint">Links adicionados ficam visíveis para o estúdio. O conteúdo continua no Drive e só abre para quem já tem permissão do proprietário.</p>' + table(
-        ["MATERIAL", "TIPO", "OBSERVAÇÕES", "LINK", ""],
-        state()
-          .projectMaterials.filter((x) => x.projectId === id)
-          .map((x) => [
-            esc(x.name),
-            esc(x.kind),
-            esc(x.note),
-            urlLink(x.url),
-            actions("material", x.id),
-          ]),
-      );
+      cta = `<div class="ops-actions ops-material-actions">${btn("Adicionar material", "ops:new:material")}${canEdit() ? btn('Adicionar do Google Drive','google:pick:'+id,'file','') : ''}</div>`;
+      const materials = state().projectMaterials.filter((x) => x.projectId === id);
+      content = `<section class="project-materials" aria-label="Materiais da produção"><div class="project-materials-heading"><div><h2>Materiais da produção</h2><p>Arquivos, referências e links desta produção em um só lugar.</p></div><span>${materials.length} ${materials.length === 1 ? 'item' : 'itens'}</span></div><p class="project-materials-note">Links adicionados ficam visíveis para o estúdio. Arquivos do Drive continuam na conta do proprietário e só abrem para quem já tem permissão.</p><div class="project-material-list">${materials.map((x) => `<article class="project-material"><span class="project-material-icon" aria-hidden="true">${icon("file")}</span><div class="project-material-info"><h3>${esc(x.name)}</h3><span class="project-material-kind">${esc(x.kind || 'Material')}</span>${x.note ? `<p>${esc(x.note)}</p>` : ''}</div><div class="project-material-controls">${urlLink(x.url)}${actions("material", x.id)}</div></article>`).join('') || '<div class="project-material-empty"><strong>Nenhum material por aqui ainda.</strong><p>Use um dos botões acima para adicionar um link ou selecionar arquivos do Google Drive.</p></div>'}</div></section>`;
     } else if (tab === "hours") {
       cta = btn("Registrar horas", "ops:new:hour");
       content =
@@ -412,7 +402,7 @@ export function createOperations(ctx) {
       }</section></div>`;
       cta = "";
     }
-    if (tab === 'overview' || tab === 'finance') content = `<section class="panel"><h2>Previsão do projeto</h2><div class="detail-grid"><div><small>Valor contratado</small><strong>${money(p.value)}</strong></div><div><small>Custos registrados (pagos + pendentes)</small><strong>${money(m.plannedCosts)}</strong></div><div><small>Sobra prevista</small><strong class="${m.forecast < 0 ? 'value-negative' : 'value-positive'}">${money(m.forecast)}</strong></div></div><p class="form-hint">Contrato menos custos registrados, incluindo aluguéis. É uma previsão, não saldo disponível. Despesas ainda não cadastradas, impostos e estimativas de horas não estão incluídos.</p></section>` + content;
+    if (tab === 'overview' || tab === 'finance') content = `<section class="panel project-forecast-panel"><div class="project-forecast-heading"><h2>Previsão do projeto</h2><span>Resumo estimado</span></div><div class="project-forecast-values"><div><small>Valor contratado</small><strong>${money(p.value)}</strong></div><div><small>Custos registrados <span>(pagos + pendentes)</span></small><strong>${money(m.plannedCosts)}</strong></div><div class="project-forecast-result"><small>Sobra prevista</small><strong class="${m.forecast < 0 ? 'value-negative' : 'value-positive'}">${money(m.forecast)}</strong></div></div><p class="project-forecast-note">Contrato menos custos registrados, incluindo aluguéis. É uma previsão, não saldo disponível. Despesas ainda não cadastradas, impostos e estimativas de horas não estão incluídos.</p></section>` + content;
     if (canEdit()) cta += btn('Excluir produção', 'delete-production:' + id, 'trash', 'small danger');
     const client=clientForProject(state(),p),logo=safeLocalImage(client?.logo);
     const clientAction=canEdit()?btn(client?(logo?'Alterar imagem do cliente':'Adicionar imagem do cliente'):'Vincular cliente',client?'edit-client:'+client.id:'edit-project:'+p.id,'image','small'):'';
