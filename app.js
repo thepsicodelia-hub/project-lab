@@ -7,6 +7,7 @@ import {
   outstanding,
 } from "./src/data.js";
 import { WorkspaceRepository } from "./src/repository.js";
+import { financeDetailRows } from './src/finance-details.js';
 import { parseCaptureDates } from './src/project-dates.js';
 import { deleteProduction } from './src/delete-production.js';
 import { addRentalCosts } from './src/rental-costs.js';
@@ -554,6 +555,7 @@ let route = "dashboard",
   taskView = "list",
   plannerWeekOffset = 0,
   financeView = "overview",
+  financeDetail = '',
   financePeriod = currentMonth(),
   distributionMetric = 'received',
   distributionGroup = 'client',
@@ -658,6 +660,8 @@ const panel = (title, sub, body, action = "", cls = "") =>
   `<section class="panel ${cls}"><div class="panel-head"><div><h2>${title}</h2>${sub ? `<p class="panel-sub">${sub}</p>` : ""}</div>${action}</div>${body}</section>`;
 const stat = (label, value, note, ic = "chart", tone = "") =>
   `<article class="stat"><div class="stat-top"><span>${label}</span><span>${icon(ic)}</span></div><p class="stat-number ${tone}">${value}</p><div class="stat-note">${note}</div></article>`;
+const financeStat = (label, value, note, ic, tone, detail, destination) =>
+  stat(label, value, note, ic, tone).replace('<article class="stat">', `<button type="button" class="stat finance-stat" data-finance-view="${destination}" data-finance-detail="${detail}" aria-label="${label}: ver detalhes">`).replace('</article>', `<span class="finance-stat-link">Ver detalhes ${icon('arrow')}</span></button>`);
 const revenue = () => financialSummary(state, currentMonth()).revenue;
 const costs = () => financialSummary(state, currentMonth()).costs;
 function renderNav() {
@@ -874,17 +878,16 @@ function finance() {
     (undated
       ? `<div class="notice">${undated} lançamento(s) recebido(s)/pago(s) sem data. Edite as datas para incluí-los no caixa e nos gráficos.</div>`
       : "") +
-    `<div class="stats">${stat("Recebido", money(summary.revenue), "Pela data de recebimento", "wallet", summary.revenue>0?'value-positive':'')}${stat("Despesas pagas", money(summary.costs), "Pela data de pagamento", "chart", summary.costs>0?'value-negative':'')}${stat("Resultado de caixa", money(summary.profit), "Recebimentos − despesas pagas", "trend", summary.profit>0?'value-positive':summary.profit<0?'value-negative':'')}${stat("A receber", money(summary.receivable), "Pendências de todos os períodos", "clock", summary.receivable>0?'value-pending':'')}</div>`;
+    `<div class="stats">${financeStat("Recebido", money(summary.revenue), "Pela data de recebimento", "wallet", summary.revenue>0?'value-positive':'', 'received', 'income')}${financeStat("Despesas pagas", money(summary.costs), "Pela data de pagamento", "chart", summary.costs>0?'value-negative':'', 'paid', 'costs')}${financeStat("Resultado de caixa", money(summary.profit), "Recebimentos − despesas pagas", "trend", summary.profit>0?'value-positive':summary.profit<0?'value-negative':'', '', 'cash')}${financeStat("A receber", money(summary.receivable), "Pendências de todos os períodos", "clock", summary.receivable>0?'value-pending':'', 'outstanding', 'income')}</div>`;
   if (financeView === "income" || financeView === "costs") {
     const isCost = financeView === "costs";
-    const rows = (isCost ? state.costs : state.income).filter(
-      (i) => !selected || !i.date || i.date.startsWith(selected),
-    );
+    const rows = financeDetailRows(state, { view: financeView, detail: financeDetail, period: selected });
     return (
       html +
       panel(
-        isCost ? "Despesas" : "Receitas",
-        "Lista por vencimento / data do lançamento.",
+        financeDetail === 'outstanding' ? 'Valores a receber' : financeDetail === 'received' ? 'Recebimentos do período' : financeDetail === 'paid' ? 'Despesas pagas do período' : isCost ? "Despesas" : "Receitas",
+        financeDetail === 'outstanding' ? 'Saldo pendente de todos os períodos, incluindo pagamentos parciais.' : financeDetail === 'received' ? 'Valores efetivamente recebidos, pela data de recebimento.' : "Lista por vencimento / data do lançamento.",
+        (financeDetail ? '<button type="button" class="btn small" data-finance-view="'+financeView+'">Mostrar todos os lançamentos</button>' : '') +
         simpleTable(
           ["DESCRIÇÃO", "PROJETO", "VALOR", "DATA", "STATUS", ""],
           rows.map((i) => [
@@ -894,8 +897,8 @@ function finance() {
                 i.client ||
                 "—",
             ),
-            money(i.value),
-            i.date ? dateLabel(i.date) : badge("Sem data", "amber"),
+            money(financeDetail === 'outstanding' ? outstanding(i) : financeDetail === 'received' ? received(i) : i.value),
+            (financeDetail === 'received' ? i.paidDate : i.date) ? dateLabel(financeDetail === 'received' ? i.paidDate : i.date) : badge("Sem data", "amber"),
             badge(
               isCost ? (i.paid ? "Pago" : "Pendente") : i.status,
               (isCost ? i.paid : i.status === "Pago") ? "green" : "amber",
@@ -1547,6 +1550,7 @@ function bindForms() {
   if (period)
     period.onchange = (e) => {
       financePeriod = e.target.value;
+      if (financeDetail === 'outstanding') financeDetail = '';
       render();
     };
   const ps = document.getElementById("project-search");
@@ -1745,10 +1749,18 @@ document.addEventListener("click", (e) => {
   }
   if (d.view) view = d.view;
   if (d.taskView) taskView = d.taskView;
-  if (d.financeView) financeView = d.financeView;
+  if (d.financeView) {
+    financeView = d.financeView;
+    financeDetail = d.financeDetail || '';
+    if (financeDetail === 'outstanding') financePeriod = '';
+  }
   if (d.teamView) teamView = d.teamView;
   if (d.commercialView) commercialView = d.commercialView;
   render();
+  if (d.financeView) {
+    const detail = document.querySelector('#content .panel, main .panel');
+    if (detail) { detail.tabIndex = -1; detail.focus({preventScroll:true}); detail.scrollIntoView({block:'nearest'}); }
+  }
 });
 document.addEventListener("change", async (e) => {
   if (appMode === "locked" || saving) return;
