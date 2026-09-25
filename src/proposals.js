@@ -464,14 +464,34 @@ export function createProposals(ctx) {
       if (!validateDraft()) return true;
       if (document.body.dataset.exportingPdf) return true;
       document.body.dataset.exportingPdf = 'true';
+      const pdfButton = document.querySelector('[data-action="proposal-print"]');
+      const previousLabel = pdfButton?.innerHTML;
+      const toolbar = pdfButton?.closest('.pe-toolbar');
+      let pdfStatus = toolbar?.parentElement.querySelector('[data-pdf-status]');
+      if (!pdfStatus && toolbar) {
+        pdfStatus = document.createElement('p');
+        pdfStatus.dataset.pdfStatus = '';
+        pdfStatus.className = 'pe-hint';
+        pdfStatus.style.cssText = 'margin:0;padding:12px 24px;';
+        pdfStatus.setAttribute('role', 'status');
+        toolbar.after(pdfStatus);
+      }
+      if (pdfStatus) pdfStatus.textContent = 'Preparando seu PDF. Aguarde a conclusão.';
+      const progress = (message) => { if (pdfButton) { pdfButton.textContent = message; pdfButton.disabled = true; } };
       toast('Preparando o PDF. Aguarde o download.');
       try {
         const { downloadProposalPDF } = await import('./proposal-pdf.js');
-        await downloadProposalPDF(proposalDocument(draft, getState().workspace), draft.name.replace(/[^\p{L}\p{N} -]/gu, '').slice(0,80) || 'proposta');
+        await downloadProposalPDF(proposalDocument(draft, getState().workspace), draft.name.replace(/[^\p{L}\p{N} -]/gu, '').slice(0,80) || 'proposta', progress);
         toast('PDF pronto para baixar.');
+        if (pdfStatus) pdfStatus.textContent = 'PDF gerado. Confira os Downloads do navegador e permita o download se solicitado.';
       } catch (error) {
-        toast('Não foi possível gerar o PDF. ' + error.message);
-      } finally { delete document.body.dataset.exportingPdf; }
+        const message = 'Não foi possível gerar o PDF. ' + (error?.message || 'Tente novamente.');
+        toast(message);
+        if (pdfStatus) pdfStatus.textContent = message;
+      } finally {
+        delete document.body.dataset.exportingPdf;
+        if (pdfButton) { pdfButton.innerHTML = previousLabel; pdfButton.disabled = false; }
+      }
       return true;
     }
     if (action === "proposal-lead") {
