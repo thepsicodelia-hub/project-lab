@@ -111,7 +111,22 @@
 .project-material-kind { color: var(--muted); font-size: .75rem; }
 .project-material-info p { margin: 11px 0 0; color: var(--muted); font-size: .8125rem; line-height: 1.5; overflow-wrap: anywhere; }
 .project-material-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.project-material-controls > .text-link { min-height: 44px; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.project-material-controls > .text-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-hover);
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+.project-material-controls > .text-link:hover { background: var(--panel); border-color: var(--muted); }
+.project-material-controls > .text-link:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 .project-material-controls .ops-actions { padding-left: 16px; border-left: 1px solid var(--line); }
 .project-material-controls .btn { min-height: 40px; padding-inline: 13px; font-size: .8125rem; }
 .project-material-empty { padding: 28px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); }
