@@ -887,7 +887,6 @@ function finance() {
       panel(
         financeDetail === 'outstanding' ? 'Valores a receber' : financeDetail === 'received' ? 'Recebimentos do período' : financeDetail === 'paid' ? 'Despesas pagas do período' : isCost ? "Despesas" : "Receitas",
         financeDetail === 'outstanding' ? 'Saldo pendente de todos os períodos, incluindo pagamentos parciais.' : financeDetail === 'received' ? 'Valores efetivamente recebidos, pela data de recebimento.' : "Lista por vencimento / data do lançamento.",
-        (financeDetail ? '<button type="button" class="btn small" data-finance-view="'+financeView+'">Mostrar todos os lançamentos</button>' : '') +
         simpleTable(
           ["DESCRIÇÃO", "PROJETO", "VALOR", "DATA", "STATUS", ""],
           rows.map((i) => [
@@ -913,6 +912,8 @@ function finance() {
               : "",
           ]),
         ) + (rows.length ? "" : empty("Nenhum lançamento neste período.")),
+        financeDetail ? '<button type="button" class="btn small" data-finance-view="'+financeView+'">Mostrar todos os lançamentos</button>' : '',
+        'finance-detail-panel',
       )
     );
   }
